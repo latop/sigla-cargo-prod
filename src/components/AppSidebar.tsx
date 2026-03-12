@@ -36,6 +36,7 @@ import {
 import logo from "@/assets/logo-sigla-cargo.png";
 import clientLogo from "@/assets/client-logo.png";
 import { APP_VERSION } from "@/pages/Changelog";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MenuItem {
   titleKey: string;
@@ -158,7 +159,9 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { openTab, tabs, activeTabId, MAX_TABS } = useTabs();
-  const userName = localStorage.getItem("userName") || "Usuário";
+  const { user } = useAuth();
+  const userName = user?.name || "Usuário";
+  const userGpid = user?.gpid || "";
   const userInitial = userName.charAt(0).toUpperCase();
 
   const handleNavClick = useCallback((item: MenuItem) => {
@@ -312,6 +315,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-sidebar-foreground truncate">{userName}</span>
+              {userGpid && <span className="text-xs text-sidebar-foreground/60 truncate">[{userGpid}]</span>}
               <span className="text-xs text-sidebar-foreground/60 truncate">Funcionário</span>
             </div>
           )}

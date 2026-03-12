@@ -222,9 +222,6 @@ const Dashboard = () => {
           <h1 className="text-2xl font-display font-bold text-foreground">
             {t("dashboard.title")}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("dashboard.welcome")}, <span className="font-semibold text-foreground">{userName}</span>!
-          </p>
         </div>
         <img src={clientLogo} alt="Client Logo" className="h-10 object-contain" />
       </motion.div>
