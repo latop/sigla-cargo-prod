@@ -33,7 +33,7 @@ const Login = () => {
   };
 
   const handleSSO = () => {
-    const returnUrl = encodeURIComponent(window.location.origin + "/home");
+    const returnUrl = encodeURIComponent(window.location.origin + "/#/home");
     window.location.href = `${API_BASE}/Auth/Login?returnUrl=${returnUrl}`;
   };
 
