@@ -32,23 +32,9 @@ const Login = () => {
     navigate("/dashboard");
   };
 
-  const handleSSO = async () => {
-    setSsoLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/Auth/Login`);
-      if (!response.ok) throw new Error("Erro ao conectar com SSO");
-      const redirectUrl = await response.text();
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-      } else {
-        throw new Error("URL de redirecionamento não recebida");
-      }
-    } catch (error) {
-      toast.error(t("login.ssoError", "Erro ao iniciar login SSO. Tente novamente."));
-      console.error("SSO error:", error);
-    } finally {
-      setSsoLoading(false);
-    }
+  const handleSSO = () => {
+    const returnUrl = encodeURIComponent(window.location.origin + "/dashboard");
+    window.location.href = `${API_BASE}/Auth/Login?returnUrl=${returnUrl}`;
   };
 
   const changeLanguage = (lng: string) => {
