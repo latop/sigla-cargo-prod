@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Mail, Lock, LogIn, KeyRound, Globe, Loader2 } from "lucide-react";
 import { API_BASE } from "@/config/api";
-import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,19 +21,26 @@ const languages = [
 const Login = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [ssoLoading, setSsoLoading] = useState(false);
 
+  // If already authenticated, redirect
+  if (!loading && user) {
+    navigate("/home", { replace: true });
+    return null;
+  }
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate with API auth
-    localStorage.setItem("userName", email.split("@")[0]);
+    // For email/password, POST to backend which sets the cookie, then check auth
+    // TODO: integrate with API auth endpoint for email/password login
     navigate("/home");
   };
 
   const handleSSO = () => {
-    const returnUrl = encodeURIComponent(window.location.origin + "/#/home");
+    const returnUrl = encodeURIComponent(window.location.origin + "/#/auth/callback");
     window.location.href = `${API_BASE}/Auth/Login?returnUrl=${returnUrl}`;
   };
 

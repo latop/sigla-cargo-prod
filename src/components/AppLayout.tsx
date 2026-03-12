@@ -8,6 +8,7 @@ import { Globe, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TabBar } from "@/components/TabBar";
 import { TabsProvider, useTabs } from "@/contexts/TabsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { getRouteComponent } from "@/config/routeRegistry";
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ function AppLayoutInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const { tabs, activeTabId, openTab } = useTabs();
+  const { logout } = useAuth();
   const [pageTitle, setPageTitle] = useState("");
   const [PageIcon, setPageIcon] = useState<React.ComponentType<{ className?: string }> | null>(null);
 
@@ -95,7 +97,10 @@ function AppLayoutInner() {
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => navigate("/login")}
+              onClick={async () => {
+                await logout();
+                navigate("/login");
+              }}
             >
               <LogOut className="h-3.5 w-3.5 mr-1" />
               {t("common.logout")}
