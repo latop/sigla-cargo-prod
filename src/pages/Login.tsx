@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo-sigla-cargo.png";
 import clientLogo from "@/assets/client-logo.png";
 
@@ -21,9 +22,11 @@ const languages = [
 const Login = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, login } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
 
   // If already authenticated, redirect
@@ -32,14 +35,25 @@ const Login = () => {
     return null;
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For email/password, POST to backend which sets the cookie, then check auth
-    // TODO: integrate with API auth endpoint for email/password login
-    navigate("/home");
+    if (!email || !password) return;
+    setLoginLoading(true);
+    const result = await login({ email, password });
+    setLoginLoading(false);
+    if (result.success) {
+      navigate("/home");
+    } else {
+      toast({
+        variant: "destructive",
+        title: t("login.error", "Erro de autenticação"),
+        description: result.message,
+      });
+    }
   };
 
   const handleSSO = () => {
+    setSsoLoading(true);
     const returnUrl = encodeURIComponent(window.location.origin + "/#/auth/callback");
     window.location.href = `${API_BASE}/Auth/Login?returnUrl=${returnUrl}`;
   };
@@ -117,6 +131,7 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   placeholder="nome@empresa.com"
+                  disabled={loginLoading}
                 />
               </div>
             </div>
@@ -137,12 +152,13 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
                   placeholder="••••••••"
+                  disabled={loginLoading}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full font-semibold" size="lg">
-              <LogIn className="mr-2 h-4 w-4" />
+            <Button type="submit" className="w-full font-semibold" size="lg" disabled={loginLoading}>
+              {loginLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
               {t("login.signIn")}
             </Button>
           </form>

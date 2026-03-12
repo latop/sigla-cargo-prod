@@ -109,6 +109,7 @@ function AppLayoutInner() {
         </header>
         <TabBar />
         <main className="flex-1 overflow-auto relative">
+         <React.Suspense fallback={<div className="flex items-center justify-center h-full"><span className="text-muted-foreground text-sm">Carregando...</span></div>}>
           {/* Render all open tabs, keep them mounted, hide inactive */}
           {tabs.map((tab) => {
             const Component = getRouteComponent(tab.id);
@@ -154,6 +155,7 @@ function AppLayoutInner() {
               <DashboardFallback setPageTitle={setPageTitle} setPageIcon={setPageIcon} />
             </div>
           )}
+         </React.Suspense>
         </main>
       </div>
     </div>

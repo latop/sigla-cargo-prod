@@ -1,37 +1,35 @@
 import React from "react";
-import Dashboard from "@/pages/Dashboard";
-import GenericPage from "@/pages/GenericPage";
-import Changelog from "@/pages/Changelog";
-import Manual from "@/pages/Manual";
-import TechnicalManual from "@/pages/TechnicalManual";
-import AdminParameters from "@/pages/AdminParameters";
-import ActivityPage from "@/pages/ActivityPage";
-import ActivityTypePage from "@/pages/ActivityTypePage";
-import DriverPage from "@/pages/DriverPage";
-import DailyTripPage from "@/pages/DailyTripPage";
-import LinePage from "@/pages/LinePage";
-import ImportMapPage from "@/pages/ImportMapPage";
-import JourneyReleasePage from "@/pages/JourneyReleasePage";
-import ReportsPage from "@/pages/ReportsPage";
-import TripSchedulePage from "@/pages/TripSchedulePage";
 
-const customRoutes: Record<string, React.ComponentType> = {
-  "/home": Dashboard,
-  "/changelog": Changelog,
-  "/manual": Manual,
-  "/technical-manual": TechnicalManual,
-  "/admin-parameters": AdminParameters,
-  "/activity": ActivityPage,
-  "/activity-type": ActivityTypePage,
-  "/driver": DriverPage,
-  "/daily-trip": DailyTripPage,
-  "/line": LinePage,
-  "/import-map": ImportMapPage,
-  "/release-driver": JourneyReleasePage,
-  "/reports": ReportsPage,
-  "/daily-trips-schedule": TripSchedulePage,
+const lazyRoutes: Record<string, () => Promise<{ default: React.ComponentType }>> = {
+  "/home": () => import("@/pages/Dashboard"),
+  "/changelog": () => import("@/pages/Changelog"),
+  "/manual": () => import("@/pages/Manual"),
+  "/technical-manual": () => import("@/pages/TechnicalManual"),
+  "/admin-parameters": () => import("@/pages/AdminParameters"),
+  "/activity": () => import("@/pages/ActivityPage"),
+  "/activity-type": () => import("@/pages/ActivityTypePage"),
+  "/driver": () => import("@/pages/DriverPage"),
+  "/daily-trip": () => import("@/pages/DailyTripPage"),
+  "/line": () => import("@/pages/LinePage"),
+  "/import-map": () => import("@/pages/ImportMapPage"),
+  "/release-driver": () => import("@/pages/JourneyReleasePage"),
+  "/reports": () => import("@/pages/ReportsPage"),
+  "/daily-trips-schedule": () => import("@/pages/TripSchedulePage"),
 };
 
+const componentCache: Record<string, React.ComponentType> = {};
+
+const GenericPageLazy = React.lazy(() => import("@/pages/GenericPage"));
+
 export function getRouteComponent(path: string): React.ComponentType {
-  return customRoutes[path] || GenericPage;
+  if (componentCache[path]) return componentCache[path];
+
+  const loader = lazyRoutes[path];
+  if (loader) {
+    const LazyComponent = React.lazy(loader);
+    componentCache[path] = LazyComponent;
+    return LazyComponent;
+  }
+
+  return GenericPageLazy;
 }
