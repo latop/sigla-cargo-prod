@@ -16,7 +16,7 @@ import ReportsPage from "@/pages/ReportsPage";
 import TripSchedulePage from "@/pages/TripSchedulePage";
 
 const customRoutes: Record<string, React.ComponentType> = {
-  "/dashboard": Dashboard,
+  "/home": Dashboard,
   "/changelog": Changelog,
   "/manual": Manual,
   "/technical-manual": TechnicalManual,

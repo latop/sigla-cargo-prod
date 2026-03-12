@@ -38,7 +38,7 @@ function AppLayoutInner() {
   // Sync URL to active tab on mount / URL change
   useEffect(() => {
     const path = location.pathname;
-    if (path === "/dashboard" || path === "/changelog" || path === "/manual" || path === "/technical-manual") {
+    if (path === "/home" || path === "/changelog" || path === "/manual" || path === "/technical-manual") {
       // These are utility pages, don't force into tabs
       return;
     }
@@ -214,7 +214,7 @@ function DashboardFallback({
   setPageTitle: (t: string) => void;
   setPageIcon: (i: React.ComponentType<{ className?: string }> | null) => void;
 }) {
-  const Dashboard = getRouteComponent("/dashboard");
+  const Dashboard = getRouteComponent("/home");
   return (
     <PageContextProvider setPageTitle={setPageTitle} setPageIcon={setPageIcon} isActive={true}>
       <Dashboard />

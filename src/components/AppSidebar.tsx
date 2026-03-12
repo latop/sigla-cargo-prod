@@ -53,7 +53,7 @@ export const menuGroups: MenuGroup[] = [
   {
     labelKey: "dashboard.title",
     items: [],
-    directLink: { url: "/dashboard", icon: LayoutDashboard },
+    directLink: { url: "/home", icon: LayoutDashboard },
   },
   {
     labelKey: "sidebar.coordination",

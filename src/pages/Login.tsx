@@ -29,11 +29,11 @@ const Login = () => {
     e.preventDefault();
     // TODO: integrate with API auth
     localStorage.setItem("userName", email.split("@")[0]);
-    navigate("/dashboard");
+    navigate("/home");
   };
 
   const handleSSO = () => {
-    const returnUrl = encodeURIComponent(window.location.origin + "/dashboard");
+    const returnUrl = encodeURIComponent(window.location.origin + "/home");
     window.location.href = `${API_BASE}/Auth/Login?returnUrl=${returnUrl}`;
   };
 

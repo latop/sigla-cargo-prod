@@ -26,7 +26,7 @@ export function TabBar() {
       const newIdx = Math.min(idx, remaining.length - 1);
       navigate(remaining[newIdx].id);
     } else if (remaining.length === 0) {
-      navigate("/dashboard");
+      navigate("/home");
     }
   };
 
