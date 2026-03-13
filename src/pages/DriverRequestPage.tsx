@@ -198,13 +198,17 @@ const fetchRequests = async (
   pageSize: number,
 ): Promise<{ items: DriverRequestItem[]; pagination: PaginationMeta }> => {
   const params = new URLSearchParams();
-  if (filters.startDate) params.append("StartDate", `${filters.startDate}T00:00:00`);
-  if (filters.endDate) params.append("EndDate", filters.endDate);
+  if (filters.startDate) params.append("StartDate", filters.startDate.slice(0, 10));
+  if (filters.endDate) params.append("EndDate", filters.endDate.slice(0, 10));
   if (filters.driverId) params.append("DriverId", filters.driverId);
   if (filters.activityId) params.append("ActivityId", filters.activityId);
   if (filters.fleetGroupId) params.append("FleetGroupId", filters.fleetGroupId);
   if (filters.locationGroupId) params.append("LocationGroupId", filters.locationGroupId);
-  if (filters.flgStatus && filters.flgStatus !== "__pending__") params.append("FlgStatus", filters.flgStatus);
+  if (filters.flgStatus === "__pending__") {
+    params.append("FlgStatus", "T");
+  } else if (filters.flgStatus) {
+    params.append("FlgStatus", filters.flgStatus);
+  }
   params.append("PageNumber", String(pageNumber));
   params.append("PageSize", String(pageSize));
   const res = await authFetch(`/Drivers/driverrequest?${params.toString()}`);
