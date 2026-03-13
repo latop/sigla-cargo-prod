@@ -13,8 +13,16 @@ const lazyRoutes: Record<string, () => Promise<{ default: React.ComponentType }>
   "/line": () => import("@/pages/LinePage"),
   "/import-map": () => import("@/pages/ImportMapPage"),
   "/release-driver": () => import("@/pages/JourneyReleasePage"),
+  "/drivers-request": () => import("@/pages/DriverRequestPage"),
+  "/publish-journey": () => import("@/pages/ComingSoonPage"),
   "/reports": () => import("@/pages/ReportsPage"),
   "/daily-trips-schedule": () => import("@/pages/TripSchedulePage"),
+  "/departures-and-arrivals": () => import("@/pages/ComingSoonPage"),
+  "/drivers-schedule": () => import("@/pages/ComingSoonPage"),
+  "/scenarios": () => import("@/pages/ComingSoonPage"),
+  "/planning-model": () => import("@/pages/ComingSoonPage"),
+  "/trip-optimization": () => import("@/pages/ComingSoonPage"),
+  "/vehicle-planning": () => import("@/pages/ComingSoonPage"),
 };
 
 const componentCache: Record<string, React.ComponentType> = {};

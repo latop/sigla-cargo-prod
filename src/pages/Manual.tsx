@@ -154,7 +154,7 @@ const manualData: ManualGroup[] = [
         name: "Partidas e Chegadas",
         route: "/departures-and-arrivals",
         objective:
-          "Monitorar em tempo real as partidas e chegadas de veículos, com visualização de status atual de cada viagem.",
+          "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
       {
         name: "Liberação de Viagens",
@@ -179,12 +179,12 @@ const manualData: ManualGroup[] = [
       {
         name: "Escala de Motoristas",
         route: "/drivers-schedule",
-        objective: "Visualizar e gerenciar a escala de trabalho dos motoristas.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
       {
         name: "Publicação de Jornada",
         route: "/publish-journey",
-        objective: "Publicar as jornadas de trabalho dos motoristas para o período selecionado.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
     ],
   },
@@ -197,10 +197,16 @@ const manualData: ManualGroup[] = [
         objective: "Importar viagens planejadas a partir de arquivos externos para alimentar o planejamento.",
       },
       {
-        name: "Importação do Mapa",
+        name: "Importação de Demandas",
         route: "/import-map",
         objective:
-          "Importar mapas logísticos via upload de arquivo Excel (.xlsx, .xls, .csv). Arraste e solte o arquivo ou clique para selecionar. O sistema exibe barra de progresso e feedback do resultado.",
+          "Importar demandas logísticas via upload de arquivo Excel (.xlsx, .xls, .csv). O usuário seleciona o Grupo de Localidade (dropdown dinâmico da API) e arrasta ou seleciona o arquivo. O sistema valida o arquivo via endpoint de check, exibe barra de progresso e o resultado da verificação.",
+        filters:
+          "Data Inicial e Data Final para consultar o histórico de importações. O período padrão é D-1 a D+1.",
+        listing:
+          "Tabela de histórico com colunas: Arquivo, Data/Hora, Status e Resultado do check.",
+        creation:
+          "Upload de arquivo com seleção obrigatória de Grupo de Localidade. Clique em 'Importar' para enviar.",
       },
     ],
   },
@@ -210,22 +216,22 @@ const manualData: ManualGroup[] = [
       {
         name: "Modelo de Planejamento",
         route: "/planning-model",
-        objective: "Definir modelos base para geração automática de viagens planejadas.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
       {
         name: "Cenários",
         route: "/scenarios",
-        objective: "Criar e comparar cenários de planejamento para otimização logística.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
       {
         name: "Otimização de Viagens",
         route: "/trip-optimization",
-        objective: "Executar algoritmos de otimização para maximizar eficiência das rotas.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
       {
         name: "Planejamento de Veículos",
         route: "/vehicle-planning",
-        objective: "Vincular veículos a rotas e viagens planejadas para o período selecionado.",
+        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
     ],
   },

@@ -281,8 +281,8 @@ export function JourneyReleaseForm({ item, onClose, onSaved }: JourneyReleaseFor
                     className="h-8 text-xs"
                     nullable
                     displayAsText
-                    modalVisibleColumns={["nickName", "integrationCode"]}
-                    columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração" }}
+                    modalVisibleColumns={["nickName", "integrationCode", "registration"]}
+                    columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração", registration: "CPF" }}
                     transformItem={(item) => ({
                       ...item,
                       id: item.id as string,

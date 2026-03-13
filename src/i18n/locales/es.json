@@ -37,8 +37,7 @@
     "driversSchedule": "Escala de Conductores",
     "publishJourney": "Publicar Jornada",
     "releaseDriver": "Liberación de Viajes",
-    "importTrips": "Importación de Viajes Planificados",
-    "importMap": "Importación del Mapa",
+    "importDemands": "Importación de Demandas",
     "newTripOptimization": "Nueva Optimización",
     "planningModel": "Modelo de Planificación",
     "scenarios": "Escenarios",
@@ -70,7 +69,9 @@
     "timezone": "Zona Horaria",
     "tripType": "Tipo de Viaje",
     "truck": "Camión",
-    "adminParameters": "Parámetros del Administrador"
+    "adminParameters": "Parámetros del Administrador",
+    "comingSoon": "Pendiente de Liberación",
+    "comingSoonDesc": "Esta función será liberada pronto para su perfil."
   },
   "driver": {
     "general": "General",

@@ -38,8 +38,7 @@
     "driversSchedule": "Escala de Motoristas",
     "publishJourney": "Publicar Jornada",
     "releaseDriver": "Liberação de Viagens",
-    "importTrips": "Importação de Viagens Planejadas",
-    "importMap": "Importação do Mapa",
+    "importDemands": "Importação de Demandas",
     "newTripOptimization": "Nova Otimização",
     "planningModel": "Modelo de Planejamento",
     "scenarios": "Cenários",
@@ -72,7 +71,9 @@
     "tripType": "Tipo de Viagem",
     "adminParameters": "Parâmetros do Administrador",
     "truck": "Caminhão",
-    "reports": "Relatórios"
+    "reports": "Relatórios",
+    "comingSoon": "Pendente de Liberação",
+    "comingSoonDesc": "Esta função será liberada em breve para o seu perfil."
   },
   "driver": {
     "general": "Geral",

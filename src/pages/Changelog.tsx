@@ -15,6 +15,50 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.12.0",
+    date: "2026-03-13",
+    type: "feature",
+    changes: [
+      {
+        pt: "Telas pendentes de liberação: Partidas e Chegadas, Publicação de Jornadas, Cenários, Modelo de Planejamento, Otimização de Viagens, Planejamento de Veículos e Escala de Motoristas exibem mensagem 'Pendente de Liberação'",
+        en: "Pending release screens: Departures & Arrivals, Publish Journey, Scenarios, Planning Model, Trip Optimization, Vehicle Planning and Driver Schedule show 'Pending Release' message",
+        es: "Pantallas pendientes de liberación: Partidas y Llegadas, Publicar Jornada, Escenarios, Modelo de Planificación, Optimización de Viajes, Planificación de Vehículos y Escala de Conductores muestran mensaje 'Pendiente de Liberación'",
+      },
+      {
+        pt: "Solicitação de Motoristas: status Pendente corrigido para identificar registros com FlgStatus nulo",
+        en: "Driver Request: Pending status corrected to identify records with null FlgStatus",
+        es: "Solicitud de Conductores: estado Pendiente corregido para identificar registros con FlgStatus nulo",
+      },
+      {
+        pt: "Busca avançada de motorista com CPF padronizada nas telas de Liberação de Viagens e Solicitação de Motoristas",
+        en: "Advanced driver search with CPF standardized on Trip Release and Driver Request screens",
+        es: "Búsqueda avanzada de conductor con CPF estandarizada en pantallas de Liberación de Viajes y Solicitud de Conductores",
+      },
+      {
+        pt: "Traduções e manuais atualizados com as novas telas pendentes de liberação",
+        en: "Translations and manuals updated with the new pending release screens",
+        es: "Traducciones y manuales actualizados con las nuevas pantallas pendientes de liberación",
+      },
+    ],
+  },
+  {
+    version: "1.11.0",
+    date: "2026-03-13",
+    type: "feature",
+    changes: [
+      {
+        pt: "Importação de Demandas: campo 'Grupo de Localidade' alterado para dropdown com listagem dinâmica da API (LocationGroup)",
+        en: "Demand Import: 'Location Group' field changed to dropdown with dynamic listing from API (LocationGroup)",
+        es: "Importación de Demandas: campo 'Grupo de Localidad' cambiado a dropdown con listado dinámico de la API (LocationGroup)",
+      },
+      {
+        pt: "Manuais de Usuário e Técnico atualizados com documentação da tela de Importação de Demandas",
+        en: "User and Technical Manuals updated with Demand Import screen documentation",
+        es: "Manuales de Usuario y Técnico actualizados con documentación de la pantalla de Importación de Demandas",
+      },
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-03-12",
     type: "feature",
@@ -292,7 +336,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.10.0";
+export const APP_VERSION = "1.12.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

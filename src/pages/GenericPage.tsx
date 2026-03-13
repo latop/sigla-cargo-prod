@@ -5,7 +5,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Search, X, Loader2, ChevronLeft, ChevronRight,
+  Search, X, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown,
   Plus, Pencil, Trash2, Save, Check, Download, FileSpreadsheet, FileText,
   CalendarDays, Route, Link2, Truck, UserCheck, Users, Megaphone, UserMinus,
   FileUp, Sparkles, LayoutTemplate, Layers, Cpu, Container,
@@ -238,10 +238,13 @@ const getCellDisplay = (row: Rec, field: FieldSchema, lookups: Record<string, Re
     }
     return "--";
   }
-  if (field.type === "datetime") {
+  if (field.type === "datetime" || field.type === "date") {
     const v = row[field.key];
     if (!v) return "--";
     try {
+      if (field.type === "date") {
+        return new Date(String(v)).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      }
       return new Date(String(v)).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     } catch {
       return String(v);
@@ -280,6 +283,10 @@ const GenericPage = () => {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Sort state
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // CRUD state
   const [isCreating, setIsCreating] = useState(false);
@@ -325,7 +332,7 @@ const GenericPage = () => {
   const pagination = paginatedResult?.pagination;
 
   // Local filtering for simple entities (after data is loaded)
-  const items = useMemo(() => {
+  const filteredItems = useMemo(() => {
     if (!isSimpleEntity || !localFilter.trim()) return rawItems;
     const term = localFilter.toLowerCase();
     const visibleFields = schema?.fields.filter((f) => !f.hideInTable) || [];
@@ -345,6 +352,41 @@ const GenericPage = () => {
       }),
     );
   }, [rawItems, localFilter, isSimpleEntity, schema]);
+
+  // Sort items by column
+  const items = useMemo(() => {
+    if (!sortColumn) return filteredItems;
+    const col = schema?.fields.find((f) => f.key === sortColumn);
+    return [...filteredItems].sort((a, b) => {
+      let valA: unknown;
+      let valB: unknown;
+      if (col?.nestedPath) {
+        const parts = col.nestedPath.split(".");
+        valA = parts.reduce((obj: unknown, k) => (obj as Rec)?.[k], a);
+        valB = parts.reduce((obj: unknown, k) => (obj as Rec)?.[k], b);
+      } else if (col?.displayOnly && col?.nestedPath) {
+        const parts = col.nestedPath.split(".");
+        valA = parts.reduce((obj: unknown, k) => (obj as Rec)?.[k], a);
+        valB = parts.reduce((obj: unknown, k) => (obj as Rec)?.[k], b);
+      } else {
+        valA = a[sortColumn];
+        valB = b[sortColumn];
+      }
+      if (valA === null || valA === undefined) valA = "";
+      if (valB === null || valB === undefined) valB = "";
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      const numA = Number(valA);
+      const numB = Number(valB);
+      let cmp: number;
+      if (!isNaN(numA) && !isNaN(numB) && String(valA) !== "" && String(valB) !== "") {
+        cmp = numA - numB;
+      } else {
+        cmp = strA.localeCompare(strB, "pt-BR");
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+  }, [filteredItems, sortColumn, sortDirection, schema]);
   const totalPages = pagination?.TotalPages || 1;
   const totalCount = pagination?.TotalCount || 0;
 
@@ -403,6 +445,18 @@ const GenericPage = () => {
 
   // Handlers
   const handleSearch = () => {
+    // Validate minChars on string filters
+    if (schema?.filters) {
+      for (const filter of schema.filters) {
+        if (filter.minChars && filter.type === "string") {
+          const val = filterValues[filter.paramName] || "";
+          if (val.length > 0 && val.length < filter.minChars) {
+            toast({ title: `"${filter.label}" requer no mínimo ${filter.minChars} caracteres.`, variant: "destructive" });
+            return;
+          }
+        }
+      }
+    }
     setSearchSnapshot({ ...filterValues });
     setSearched(true);
     setPageNumber(1);
@@ -607,7 +661,7 @@ const GenericPage = () => {
     schema.fields.forEach((f) => {
       if (!f.required || f.displayOnly) return;
       const v = formData[f.key];
-      if (f.type === "string" || f.type === "color" || f.type === "lookup" || f.type === "datetime" || f.type === "select") {
+      if (f.type === "string" || f.type === "color" || f.type === "lookup" || f.type === "datetime" || f.type === "date" || f.type === "select") {
         if (!v || !String(v).trim()) errors[f.key] = true;
       }
       if (f.type === "number" && (v === null || v === undefined || v === "")) errors[f.key] = true;
@@ -629,6 +683,8 @@ const GenericPage = () => {
       }
       // Convert empty strings to null for non-required (nullable) fields
       if (!f.required && (val === "" || val === undefined)) {
+        // For lookup (GUID) fields, omit entirely instead of sending null
+        if (f.type === "lookup") return;
         payload[f.key] = null;
       } else {
         payload[f.key] = val;
@@ -706,7 +762,49 @@ const GenericPage = () => {
     const errClass = formErrors[field.key] ? "border-destructive" : "";
 
     switch (field.type) {
-      case "string":
+      case "string": {
+        // Plate mask: AAA-#A## (Mercosul)
+        if (field.mask === "plate") {
+          const applyPlateMask = (input: string): string => {
+            const raw = input.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 7);
+            if (raw.length <= 3) return raw.replace(/[^A-Z]/g, "");
+            const letters = raw.slice(0, 3).replace(/[^A-Z]/g, "");
+            const rest = raw.slice(3);
+            if (rest.length === 0) return letters + "-";
+            // Pattern: L L L - D L D D
+            let masked = letters + "-";
+            const pattern = [/\d/, /[A-Z]/, /\d/, /\d/];
+            for (let i = 0; i < rest.length && i < 4; i++) {
+              if (pattern[i].test(rest[i])) masked += rest[i];
+              else break;
+            }
+            return masked;
+          };
+          return (
+            <Input
+              value={String(formData[field.key] ?? "")}
+              onChange={(e) => updateField(field.key, applyPlateMask(e.target.value))}
+              maxLength={8}
+              placeholder="AAA-0A00"
+              className={`h-8 text-xs ${errClass}`}
+            />
+          );
+        }
+        // Year mask: 4 digits only
+        if (field.mask === "year") {
+          return (
+            <Input
+              value={String(formData[field.key] ?? "")}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                updateField(field.key, digits || null);
+              }}
+              maxLength={4}
+              placeholder="AAAA"
+              className={`h-8 text-xs ${errClass}`}
+            />
+          );
+        }
         return (
           <Input
             value={String(formData[field.key] ?? "")}
@@ -718,6 +816,7 @@ const GenericPage = () => {
             className={`h-8 text-xs ${errClass}`}
           />
         );
+      }
       case "number":
         return (
           <Input
@@ -790,6 +889,15 @@ const GenericPage = () => {
             value={formData[field.key] ? String(formData[field.key]) : null}
             onChange={(v) => updateField(field.key, v || "")}
             includeTime
+            hasError={!!errClass}
+          />
+        );
+      case "date":
+        return (
+          <DatePickerField
+            value={formData[field.key] ? String(formData[field.key]) : null}
+            onChange={(v) => updateField(field.key, v || "")}
+            includeTime={false}
             hasError={!!errClass}
           />
         );
@@ -963,10 +1071,13 @@ const GenericPage = () => {
         />
       );
     }
-    if (field.type === "datetime") {
+    if (field.type === "datetime" || field.type === "date") {
       const v = row[field.key];
       if (!v) return "--";
       try {
+        if (field.type === "date") {
+          return new Date(String(v)).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        }
         return new Date(String(v)).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
       } catch {
         return String(v);
@@ -1195,16 +1306,37 @@ const GenericPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        {columns.map((col) => (
-                          <TableHead
-                            key={col.key}
-                            className={`whitespace-nowrap font-medium h-8 px-3 text-xs ${
-                              col.type === "boolean" || col.type === "color" ? "text-center" : ""
-                            }`}
-                          >
-                            {col.label}
-                          </TableHead>
-                        ))}
+                        {columns.map((col) => {
+                          const isSorted = sortColumn === col.key;
+                          const SortIcon = isSorted ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+                          const isCenter = col.type === "boolean" || col.type === "color";
+                          return (
+                            <TableHead
+                              key={col.key}
+                              className={`whitespace-nowrap font-medium h-8 px-3 text-xs cursor-pointer select-none hover:bg-muted/80 transition-colors ${
+                                isCenter ? "text-center" : ""
+                              }`}
+                              onClick={() => {
+                                if (sortColumn === col.key) {
+                                  if (sortDirection === "desc") {
+                                    setSortColumn(null);
+                                    setSortDirection("asc");
+                                  } else {
+                                    setSortDirection("desc");
+                                  }
+                                } else {
+                                  setSortColumn(col.key);
+                                  setSortDirection("asc");
+                                }
+                              }}
+                            >
+                              <div className={`flex items-center gap-1 ${isCenter ? "justify-center" : ""}`}>
+                                {col.label}
+                                <SortIcon className={`h-3 w-3 ${isSorted ? "text-foreground" : "text-muted-foreground/50"}`} />
+                              </div>
+                            </TableHead>
+                          );
+                        })}
                         {schema && (
                           <TableHead className="whitespace-nowrap font-medium h-8 px-3 text-xs text-center w-24">
                             {t("common.actions")}
@@ -1328,27 +1460,32 @@ const GenericPage = () => {
         const deleteItem = deleteId ? items.find((i) => String(i.id) === deleteId) : null;
         let deleteCode = "";
         if (deleteItem) {
-          // Try nested object labels (e.g. timezone.code + start for TimezoneValue)
-          const nestedFields = schema.fields.filter((f) => f.nestedPath);
-          if (nestedFields.length > 0) {
-            const parts: string[] = [];
+          // Build label from the record's own identifiers
+          const parts: string[] = [];
+          // Primary identifiers: licensePlate, code, name, description
+          if (deleteItem.licensePlate) parts.push(String(deleteItem.licensePlate));
+          if (deleteItem.code) parts.push(String(deleteItem.code));
+          if (deleteItem.name && !deleteItem.code) parts.push(String(deleteItem.name));
+          if (deleteItem.description && !deleteItem.code && !deleteItem.name) parts.push(String(deleteItem.description));
+
+          // If no primary identifiers, try nested paths or fallback
+          if (parts.length === 0) {
+            const nestedFields = schema.fields.filter((f) => f.nestedPath);
             nestedFields.forEach((f) => {
               const pathParts = f.nestedPath!.split(".");
               let val: unknown = deleteItem;
               for (const p of pathParts) val = (val as Rec)?.[p];
               if (val) parts.push(String(val));
             });
-            // Also include start date if available
             const startField = schema.fields.find((f) => f.key === "start");
             if (startField && deleteItem.start) {
               try {
                 parts.push(new Date(String(deleteItem.start)).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }));
               } catch { parts.push(String(deleteItem.start)); }
             }
-            deleteCode = parts.join(" - ");
-          } else {
-            deleteCode = String(deleteItem.code || deleteItem.description || deleteItem.name || deleteItem.id || "");
           }
+
+          deleteCode = parts.length > 0 ? parts.join(" - ") : String(deleteItem.id || "");
         }
         return (
           <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>

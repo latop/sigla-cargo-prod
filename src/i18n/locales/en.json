@@ -37,8 +37,7 @@
     "driversSchedule": "Drivers Schedule",
     "publishJourney": "Publish Journey",
     "releaseDriver": "Trip Release",
-    "importTrips": "Planned Trips Import",
-    "importMap": "Map Import",
+    "importDemands": "Demand Import",
     "newTripOptimization": "New Trip Optimization",
     "planningModel": "Planning Model",
     "scenarios": "Scenarios",
@@ -70,7 +69,9 @@
     "timezone": "Timezone",
     "tripType": "Trip Type",
     "truck": "Truck",
-    "adminParameters": "Admin Parameters"
+    "adminParameters": "Admin Parameters",
+    "comingSoon": "Pending Release",
+    "comingSoonDesc": "This feature will be available soon for your profile."
   },
   "driver": {
     "general": "General",

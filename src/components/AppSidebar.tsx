@@ -82,8 +82,7 @@ export const menuGroups: MenuGroup[] = [
   {
     labelKey: "sidebar.imports",
     items: [
-      { titleKey: "menu.importTrips", url: "/import-trips", icon: FileUp },
-      { titleKey: "menu.importMap", url: "/import-map", icon: Map },
+      { titleKey: "menu.importDemands", url: "/import-map", icon: FileUp },
     ],
   },
   {

@@ -26,12 +26,16 @@ export interface FilterSchema {
   uppercase?: boolean;
   /** For largeLookup: send the item's name instead of its ID as the filter value */
   sendName?: boolean;
+  /** Minimum characters required before searching */
+  minChars?: number;
 }
 
 export interface FieldSchema {
   key: string;
   label: string;
-  type: "string" | "boolean" | "number" | "color" | "lookup" | "datetime" | "select";
+  type: "string" | "boolean" | "number" | "color" | "lookup" | "datetime" | "date" | "select";
+  /** Input mask: "plate" (AAA-#A##), "year" (4 digits) */
+  mask?: "plate" | "year";
   /** For select fields: fixed list of options { value, label } */
   options?: { value: string; label: string }[];
   /** Display only the code in the table (for lookup fields) */
@@ -166,6 +170,27 @@ export const entitySchemas: Record<string, EntitySchema> = {
     ],
   },
 
+  "/fleet-type": {
+    endpoint: "FleetType",
+    titleKey: "menu.fleetType",
+    formWidth: 720,
+    fields: [
+      { key: "code", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+      { key: "fleetGroupCode", label: "Grupo de Frota", type: "string", displayOnly: true, nestedPath: "fleetGroup.code" },
+      { key: "fleetGroupId", label: "Grupo de Frota", type: "lookup", required: true, lookupEndpoint: "FleetGroup", lookupLabelFn: "codeDescription", hideInTable: true, formColSpan: 2 },
+      { key: "fleetModelCode", label: "Modelo de Frota", type: "string", displayOnly: true, nestedPath: "fleetModel.code" },
+      { key: "fleetModelId", label: "Modelo de Frota", type: "lookup", nullable: true, lookupEndpoint: "FleetModel", lookupLabelFn: "codeName", hideInTable: true, formColSpan: 2 },
+      { key: "companyId", label: "Empresa", type: "lookup", nullable: true, lookupEndpoint: "Companies", lookupLabelFn: "codeName", hideInTable: true, formColSpan: 2 },
+      { key: "standardUnit", label: "Unid. Padrão", type: "string", nullable: true, maxLength: 20, uppercase: true, hideInTable: true, formColSpan: 2 },
+      { key: "tare", label: "Tara", type: "number", nullable: true, hideInTable: true, formColSpan: 2 },
+      { key: "capacity", label: "Capacidade", type: "number", nullable: true, hideInTable: true, formColSpan: 2 },
+      { key: "steeringGearType", label: "Direção", type: "string", nullable: true, maxLength: 50, uppercase: true, hideInTable: true, formColSpan: 3 },
+      { key: "fuelType", label: "Tipo de Combust.", type: "string", nullable: true, maxLength: 50, uppercase: true, hideInTable: true, formColSpan: 3 },
+      { key: "note", label: "Observação", type: "string", nullable: true, maxLength: 200, hideInTable: true, formColSpan: 6 },
+    ],
+  },
+
   "/fleet-brand": {
     endpoint: "FleetBrand",
     titleKey: "menu.fleetBrand",
@@ -211,6 +236,23 @@ export const entitySchemas: Record<string, EntitySchema> = {
     fields: [
       { key: "code", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
       { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+    ],
+  },
+
+  "/location-type": {
+    endpoint: "LocationType",
+    titleKey: "menu.locationType",
+    formWidth: 620,
+    filters: [
+      { paramName: "Filter1String", label: "Código", type: "string", uppercase: true },
+      { paramName: "Filter1Bool", label: "Local de Operação", type: "bool" },
+      { paramName: "Filter2Bool", label: "Local de Liberação", type: "bool" },
+    ],
+    fields: [
+      { key: "code", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+      { key: "isOperation", label: "Operação", type: "boolean", formColSpan: 1 },
+      { key: "isRelease", label: "Liberação", type: "boolean", formColSpan: 1 },
     ],
   },
 
@@ -328,6 +370,50 @@ export const entitySchemas: Record<string, EntitySchema> = {
       { key: "stopTypeCode", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
       { key: "stopTime", label: "Tempo (min)", type: "number", required: true, formColSpan: 2 },
       { key: "flgJourney", label: "Jornada Motorista", type: "boolean", formColSpan: 2 },
+    ],
+  },
+
+  "/truck": {
+    endpoint: "Truck",
+    titleKey: "menu.truck",
+    formWidth: 720,
+    filters: [
+      { paramName: "Filter1String", label: "Placa do Veículo", type: "string", uppercase: true, minChars: 3 },
+      { paramName: "Filter2String", label: "Cód. Frota Veículo", type: "string", uppercase: true, minChars: 3 },
+      { paramName: "Filter1Id", label: "Tipo de Frota", type: "lookup", lookupEndpoint: "FleetType", lookupLabelFn: "codeDescription" },
+      { paramName: "Filter2Id", label: "Grupo de Frota", type: "lookup", lookupEndpoint: "FleetGroup", lookupLabelFn: "codeDescription" },
+      { paramName: "Filter3Id", label: "Grupo de Localidade", type: "lookup", lookupEndpoint: "LocationGroup", lookupLabelFn: "codeDescription" },
+    ],
+    fields: [
+      // Table order: Placa, Cód Frota, Tipo Frota, Grupo Frota, Grupo Localidade, Chassi, Renavam
+      // Form Line 1: Placa (2) | Cód. Frota (2) | Cód. Integração (1) | Ano Fab. (1)
+      { key: "licensePlate", label: "Placa do Veículo", type: "string", required: true, maxLength: 8, uppercase: true, mask: "plate", formColSpan: 2 },
+      { key: "fleetCode", label: "Cód. Frota Veículo", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
+      // Table-only display columns (nested paths)
+      { key: "fleetTypeCode", label: "Tipo de Frota", type: "string", displayOnly: true, nestedPath: "fleetType.code" },
+      { key: "fleetGroupCode", label: "Grupo de Frota", type: "string", displayOnly: true, nestedPath: "fleetGroup.code" },
+      { key: "locationGroupCode", label: "Grupo de Localidade", type: "string", displayOnly: true, nestedPath: "locationGroup.code" },
+      // Form Line 1 continued (hideInTable)
+      { key: "integrationCode", label: "Cód. Integração", type: "string", nullable: true, maxLength: 50, uppercase: true, hideInTable: true, formColSpan: 1 },
+      { key: "manufactureYear", label: "Ano Fab.", type: "string", nullable: true, maxLength: 4, mask: "year", hideInTable: true, formColSpan: 1 },
+      // Form Line 2: UF (1) | Chassi (2) | Nº Série (2) | Recondicionado (1)
+      { key: "stateId", label: "UF", type: "lookup", nullable: true, lookupEndpoint: "States", lookupLabelFn: "codeName", tableLabelFn: "codeOnly", hideInTable: true, formColSpan: 1 },
+      { key: "chassisNumber", label: "Chassi", type: "string", nullable: true, maxLength: 50, uppercase: true, formColSpan: 2 },
+      { key: "serialNumber", label: "Nº de Série", type: "string", nullable: true, maxLength: 50, hideInTable: true, formColSpan: 2 },
+      { key: "isRefurbished", label: "Recond.", type: "boolean", nullable: true, hideInTable: true, formColSpan: 1 },
+      // Form Line 3: Renavam (2) | Val. Renavam (2) | Tara (1) | Capacidade (1)
+      { key: "regulatoryNumber", label: "Renavam", type: "string", nullable: true, maxLength: 20, formColSpan: 2 },
+      { key: "regulatoryValidity", label: "Val. Renavam", type: "datetime", nullable: true, hideInTable: true, formColSpan: 2 },
+      { key: "tare", label: "Tara (kg)", type: "number", nullable: true, hideInTable: true, formColSpan: 1 },
+      { key: "capacity", label: "Capacidade (kg)", type: "number", nullable: true, hideInTable: true, formColSpan: 1 },
+      // Form Line 4: Grupo Localidade (3) | Tipo Frota (3)
+      { key: "locationGroupId", label: "Grupo de Localidade", type: "lookup", nullable: true, lookupEndpoint: "LocationGroup", lookupLabelFn: "codeDescription", hideInTable: true, formColSpan: 3 },
+      { key: "fleetTypeId", label: "Tipo de Frota", type: "lookup", nullable: true, lookupEndpoint: "FleetType", lookupLabelFn: "codeDescription", hideInTable: true, formColSpan: 3 },
+      // Form Line 5: Data Início (3) | Data Fim (3)
+      { key: "startDate", label: "Data Início", type: "date", nullable: true, hideInTable: true, formColSpan: 3 },
+      { key: "endDate", label: "Data Fim", type: "date", nullable: true, hideInTable: true, formColSpan: 3 },
+      // Form Line 6: Observação (6)
+      { key: "note", label: "Observação", type: "string", nullable: true, maxLength: 200, hideInTable: true, formColSpan: 6 },
     ],
   },
 };
