@@ -35,7 +35,7 @@
     "departuresAndArrivals": "Chegadas e Partidas",
     "vehicleLink": "Planejamento de Veículos",
     "driversRequest": "Solicitação de Motoristas",
-    "driversSchedule": "Escala de Motoristas",
+    "driversSchedule": "Circuitos de Motoristas",
     "publishJourney": "Publicar Jornada",
     "releaseDriver": "Liberação de Viagens",
     "importDemands": "Importação de Demandas",
@@ -62,6 +62,7 @@
     "locationType": "Tipo de Localidade",
     "location": "Localidade",
     "position": "Cargo de Motorista",
+    "regulationRule": "Regra de Regulamentação",
     "region": "Região",
     "responsibleSector": "Setor Responsável",
     "state": "Estado",
@@ -174,6 +175,21 @@
     "copyConfirmButton": "Sim, copiar",
     "copySuccess": "Linha copiada com sucesso!",
     "copyError": "Erro ao copiar linha"
+  },
+  "stopType": {
+    "regulationType": "Tipo Regulamentação",
+    "meal": "Refeição",
+    "rest": "Descanso",
+    "break": "Pausa",
+    "wait": "Espera",
+    "operationalStop": "Parada Operacional"
+  },
+  "regulationRule": {
+    "minutes": "Minutos",
+    "days": "Dias",
+    "weeks": "Semanas",
+    "code": "Código",
+    "flag": "Marcador"
   },
   "common": {
     "search": "Pesquisar",

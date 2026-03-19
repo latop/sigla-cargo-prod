@@ -117,6 +117,7 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.locationType", url: "/location-type", icon: Waypoints },
       { titleKey: "menu.location", url: "/location", icon: MapPin },
       { titleKey: "menu.position", url: "/position", icon: Navigation },
+      { titleKey: "menu.regulationRule", url: "/regulation-rule", icon: Scale },
       { titleKey: "menu.region", url: "/region", icon: Flag },
       { titleKey: "menu.responsibleSector", url: "/responsible-sector", icon: Zap },
       { titleKey: "menu.state", url: "/state", icon: Map },

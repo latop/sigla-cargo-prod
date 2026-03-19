@@ -207,6 +207,9 @@ export function DatePickerField({
               onSelect={handleDateSelect}
               locale={calendarLocale}
               initialFocus
+              captionLayout="dropdown-buttons"
+              fromYear={2020}
+              toYear={2035}
               className={cn("p-3 pointer-events-auto")}
             />
           </PopoverContent>
@@ -249,6 +252,9 @@ export function DatePickerField({
             onSelect={handleDateSelect}
             locale={calendarLocale}
             initialFocus
+            captionLayout="dropdown-buttons"
+            fromYear={2020}
+            toYear={2035}
             className={cn("p-3 pointer-events-auto")}
           />
         </PopoverContent>

@@ -1235,7 +1235,7 @@ const DailyTripPage = () => {
                 const updated = { ...p, startTripDate: startDate };
                 if (startDate) {
                   const d = new Date(startDate + "T00:00:00");
-                  d.setDate(d.getDate() + 5);
+                  d.setDate(d.getDate() + 7);
                   updated.endTripDate = d.toISOString().substring(0, 10);
                 }
                 return updated;

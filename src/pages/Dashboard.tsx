@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import {
   Truck, Users, CalendarDays, TrendingUp, Route,
   LayoutDashboard, AlertTriangle, CheckCircle2, Timer, XCircle, Loader2, RefreshCw,
-  CircleDot, Ban, Play, Clock,
+  CircleDot, Ban, Play, Clock, Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,7 @@ const Dashboard = () => {
   const { t, i18n } = useTranslation();
   usePageTitle(t("dashboard.title"), LayoutDashboard);
   const queryClient = useQueryClient();
+  const [selectedLocationGroup, setSelectedLocationGroup] = useState<string>("");
   const lang: "pt" | "en" | "es" = i18n.language?.toLowerCase().startsWith("en")
     ? "en"
     : i18n.language?.toLowerCase().startsWith("es")
@@ -134,6 +135,14 @@ const Dashboard = () => {
   const today = todayISO();
   const endDate = plusDaysISO(today, 1);
   const endWeek = plusDaysISO(today, 7);
+
+  // Location Groups
+  const { data: locationGroupsResult } = useQuery({
+    queryKey: ["dashboard-location-groups"],
+    queryFn: () => apiFetch("LocationGroup", { PageSize: "200" }),
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
 
   // Today's trips
   const { data: ganttResult, isLoading: ganttLoading } = useQuery({
@@ -185,7 +194,15 @@ const Dashboard = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard-gantt-week"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard-drivers"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard-trucks"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-location-groups"] });
   };
+
+  const locationGroups: { code: string; description: string }[] = Array.isArray(locationGroupsResult?.data)
+    ? locationGroupsResult.data.map((g: Record<string, unknown>) => ({
+        code: String(g.code || ""),
+        description: String(g.description || g.name || g.code || ""),
+      }))
+    : [];
 
   // Process data
   const ganttData = ganttResult?.data;
@@ -342,6 +359,37 @@ const Dashboard = () => {
           <img src={clientLogo} alt="Client Logo" className="h-9 object-contain" />
         </div>
       </motion.div>
+
+      {/* Location Group Filter */}
+      {locationGroups.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+          className="flex items-center gap-2 flex-wrap"
+        >
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
+            <Filter className="h-3.5 w-3.5" />
+            <span className="font-medium">Base:</span>
+          </div>
+          <Button
+            variant={selectedLocationGroup === "" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs px-3 rounded-full"
+            onClick={() => setSelectedLocationGroup("")}
+          >
+            Todas
+          </Button>
+          {locationGroups.map((g) => (
+            <Button
+              key={g.code}
+              variant={selectedLocationGroup === g.code ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-3 rounded-full"
+              onClick={() => setSelectedLocationGroup(g.code)}
+            >
+              {g.description}
+            </Button>
+          ))}
+        </motion.div>
+      )}
 
       {/* Top KPI Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">

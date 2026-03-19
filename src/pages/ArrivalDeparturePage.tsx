@@ -81,11 +81,11 @@ const getRowStatus = (item: FlightBoardItem, direction: string): RowStatus => {
 };
 
 const statusColors: Record<RowStatus, string> = {
-  delayed: "bg-red-600 text-white",
-  attention: "bg-yellow-500 text-black",
-  departed: "bg-emerald-600 text-white",
-  arrived: "bg-zinc-500 text-white",
-  scheduled: "bg-transparent text-zinc-300",
+  delayed: "bg-destructive text-destructive-foreground",
+  attention: "bg-yellow-500 text-black dark:bg-yellow-500 dark:text-black",
+  departed: "bg-emerald-600 text-white dark:bg-emerald-600 dark:text-white",
+  arrived: "bg-muted-foreground/60 text-white dark:bg-muted-foreground/60 dark:text-white",
+  scheduled: "bg-[hsl(var(--board-status-scheduled-bg))] text-[hsl(var(--board-status-scheduled-text))]",
 };
 
 const statusLabel: Record<RowStatus, string> = {
@@ -162,25 +162,25 @@ const ArrivalDeparturePage = () => {
 
   return (
     <div className={cn(
-      "flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden",
+      "flex flex-col bg-board text-board-text overflow-hidden",
       expanded ? "fixed inset-0 z-50" : "h-full"
     )}>
       {/* Header bar */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-zinc-900 border-b border-zinc-800">
-        <MapPin className="h-5 w-5 text-yellow-400 shrink-0" />
+      <div className="flex items-center gap-4 px-4 py-3 bg-board-header border-b border-board-border">
+        <MapPin className="h-5 w-5 text-primary shrink-0" />
         <Popover open={locOpen} onOpenChange={setLocOpen}>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 h-8 px-3 rounded border border-zinc-700 bg-zinc-800 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors min-w-[240px] max-w-[320px]">
+            <button className="flex items-center gap-2 h-8 px-3 rounded border border-board-border bg-board-surface text-sm text-board-text hover:bg-board-surface-alt transition-colors min-w-[240px] max-w-[320px]">
               <span className="truncate flex-1 text-left">
                 {locationLabel || "Selecione a localidade..."}
               </span>
-              <ChevronsUpDown className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+              <ChevronsUpDown className="h-3.5 w-3.5 text-board-text-muted shrink-0" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-0 bg-zinc-900 border-zinc-700" align="start">
-            <div className="p-2 border-b border-zinc-800">
+          <PopoverContent className="w-[320px] p-0 bg-board-surface border-board-border" align="start">
+            <div className="p-2 border-b border-board-border">
               <Input
-                className="h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                className="h-7 text-xs bg-board-surface-alt border-board-border text-board-text placeholder:text-board-text-muted"
                 placeholder="Buscar localidade..."
                 value={locSearch}
                 onChange={(e) => setLocSearch(e.target.value)}
@@ -190,17 +190,17 @@ const ArrivalDeparturePage = () => {
             <div className="max-h-52 overflow-y-auto">
               {locationsLoading ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                  <Loader2 className="h-4 w-4 animate-spin text-board-text-muted" />
                 </div>
               ) : filteredLocations.length === 0 ? (
-                <div className="py-4 text-center text-zinc-500 text-xs">Nenhuma localidade encontrada</div>
+                <div className="py-4 text-center text-board-text-muted text-xs">Nenhuma localidade encontrada</div>
               ) : (
                 filteredLocations.map((loc) => (
                   <button
                     key={loc.code}
                     className={cn(
-                      "relative flex w-full items-center py-2 pl-8 pr-3 text-xs hover:bg-zinc-800 text-zinc-200 transition-colors",
-                      locationCode === loc.code && "bg-zinc-800 text-yellow-400"
+                      "relative flex w-full items-center py-2 pl-8 pr-3 text-xs hover:bg-board-surface-alt text-board-text transition-colors",
+                      locationCode === loc.code && "bg-board-surface-alt text-primary"
                     )}
                     onClick={() => {
                       setLocationCode(loc.code);
@@ -224,28 +224,28 @@ const ArrivalDeparturePage = () => {
         </Popover>
 
         {locationLabel && (
-          <span className="text-lg font-bold tracking-wider text-yellow-400 font-mono uppercase hidden md:block">
+          <span className="text-lg font-bold tracking-wider text-primary font-mono uppercase hidden md:block">
             {locationLabel}
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />}
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           <button
             onClick={handleRefresh}
             disabled={!locationCode}
-            className="p-2 rounded hover:bg-zinc-800 disabled:opacity-30 transition-colors"
+            className="p-2 rounded hover:bg-board-surface-alt disabled:opacity-30 transition-colors"
             title="Atualizar"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="p-2 rounded hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded hover:bg-board-surface-alt transition-colors"
             title={expanded ? "Restaurar" : "Expandir"}
           >
             {expanded ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
-          <span className="text-xs text-zinc-500 font-mono hidden sm:block">
+          <span className="text-xs text-board-text-muted font-mono hidden sm:block">
             Auto-refresh 5min
           </span>
         </div>
@@ -255,8 +255,8 @@ const ArrivalDeparturePage = () => {
       {!locationCode ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <MapPin className="h-12 w-12 text-zinc-700 mx-auto" />
-            <p className="text-zinc-500 text-sm">Selecione uma localidade para visualizar as chegadas e partidas.</p>
+            <MapPin className="h-12 w-12 text-board-text-muted mx-auto" />
+            <p className="text-board-text-muted text-sm">Selecione uma localidade para visualizar as chegadas e partidas.</p>
           </div>
         </div>
       ) : (
@@ -267,8 +267,8 @@ const ArrivalDeparturePage = () => {
             items={arrivals}
             loading={loadingArr}
             direction="ARR"
-            accentColor="text-sky-400"
-            headerBg="bg-sky-900/30"
+            accentColor="text-sky-500 dark:text-sky-400"
+            headerBg="bg-sky-500/10 dark:bg-sky-900/30"
           />
           <BoardPanel
             title="PARTIDAS"
@@ -276,8 +276,8 @@ const ArrivalDeparturePage = () => {
             items={departures}
             loading={loadingDep}
             direction="DEP"
-            accentColor="text-amber-400"
-            headerBg="bg-amber-900/30"
+            accentColor="text-amber-600 dark:text-amber-400"
+            headerBg="bg-amber-500/10 dark:bg-amber-900/30"
           />
         </div>
       )}
@@ -309,16 +309,16 @@ const BoardPanel = ({ title, icon, items, loading, direction, accentColor, heade
   }, [items]);
 
   return (
-    <div className={cn("flex flex-col border-r border-zinc-800 last:border-r-0 overflow-hidden", direction === "DEP" && "border-l border-zinc-800")}>
+    <div className={cn("flex flex-col border-r border-board-border last:border-r-0 overflow-hidden", direction === "DEP" && "border-l border-board-border")}>
       {/* Panel header */}
-      <div className={cn("flex items-center gap-2 px-4 py-2 border-b border-zinc-800", headerBg)}>
+      <div className={cn("flex items-center gap-2 px-4 py-2 border-b border-board-border", headerBg)}>
         <span className={accentColor}>{icon}</span>
         <span className={cn("text-sm font-bold tracking-[0.2em] uppercase", accentColor)}>{title}</span>
-        <span className="text-xs text-zinc-500 ml-auto font-mono">{items.length} viagens</span>
+        <span className="text-xs text-board-text-muted ml-auto font-mono">{items.length} viagens</span>
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-[55px_45px_1fr_75px_60px_1fr_72px] gap-0 px-2 py-1.5 bg-zinc-900 border-b border-zinc-800 text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+      <div className="grid grid-cols-[55px_45px_1fr_75px_60px_1fr_72px] gap-0 px-2 py-1.5 bg-board-header border-b border-board-border text-[10px] font-bold tracking-wider text-board-text-muted uppercase">
         <span>Hora</span>
         <span>Data</span>
         <span>{direction === "ARR" ? "Origem" : "Destino"}</span>
@@ -332,10 +332,10 @@ const BoardPanel = ({ title, icon, items, loading, direction, accentColor, heade
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-board-text-muted" />
           </div>
         ) : sorted.length === 0 ? (
-          <div className="flex items-center justify-center py-10 text-zinc-600 text-sm">
+          <div className="flex items-center justify-center py-10 text-board-text-muted text-sm">
             Nenhum registro encontrado
           </div>
         ) : (
@@ -345,33 +345,33 @@ const BoardPanel = ({ title, icon, items, loading, direction, accentColor, heade
               <div
                 key={`${item.seq}-${idx}`}
                 className={cn(
-                  "grid grid-cols-[55px_45px_1fr_75px_60px_1fr_72px] gap-0 px-2 py-1.5 border-b border-zinc-800/50 font-mono text-xs transition-colors",
-                  idx % 2 === 0 ? "bg-zinc-950" : "bg-zinc-900/50",
-                  status === "delayed" && "!bg-red-950/40",
-                  status === "attention" && "!bg-yellow-950/30",
+                  "grid grid-cols-[55px_45px_1fr_75px_60px_1fr_72px] gap-0 px-2 py-1.5 border-b border-board-border/50 font-mono text-xs transition-colors",
+                  idx % 2 === 0 ? "bg-board" : "bg-board-surface-alt",
+                  status === "delayed" && "!bg-red-50 dark:!bg-red-950/40",
+                  status === "attention" && "!bg-yellow-50 dark:!bg-yellow-950/30",
                 )}
               >
                 <span className={cn(
                   "font-bold text-sm tabular-nums",
-                  status === "delayed" ? "text-red-400" :
-                  status === "attention" ? "text-yellow-300" :
-                  "text-zinc-100"
+                  status === "delayed" ? "text-destructive" :
+                  status === "attention" ? "text-yellow-600 dark:text-yellow-300" :
+                  "text-board-text"
                 )}>
                   {formatTime(item.timePlanned)}
                 </span>
-                <span className="text-zinc-500 tabular-nums self-center">
+                <span className="text-board-text-muted tabular-nums self-center">
                   {formatDate(item.timePlanned)}
                 </span>
-                <span className="text-zinc-200 truncate self-center" title={item.locCode || ""}>
+                <span className="text-board-text-secondary truncate self-center" title={item.locCode || ""}>
                   {item.locCode || "--"}
                 </span>
-                <span className="text-zinc-300 tabular-nums self-center font-semibold">
+                <span className="text-board-text tabular-nums self-center font-semibold">
                   {item.licensePlate || "--"}
                 </span>
-                <span className="text-zinc-500 tabular-nums self-center text-[10px]">
+                <span className="text-board-text-muted tabular-nums self-center text-[10px]">
                   {item.truckFleetCode || "--"}
                 </span>
-                <span className="text-zinc-400 truncate self-center" title={item.nickName || ""}>
+                <span className="text-board-text-secondary truncate self-center" title={item.nickName || ""}>
                   {item.nickName || "--"}
                 </span>
                 <span className="flex items-center justify-center">

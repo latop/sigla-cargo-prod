@@ -76,6 +76,7 @@ const routeToKey: Record<string, string> = {
   "/responsible-sector": "menu.responsibleSector",
   "/state": "menu.state",
   "/stop-type": "menu.stopType",
+  "/regulation-rule": "menu.regulationRule",
   "/timezone-value": "menu.timezoneValue",
   "/timezone": "menu.timezone",
   "/trip-type": "menu.tripType",
@@ -116,6 +117,7 @@ const routeToEndpoint: Record<string, string> = {
   "/responsible-sector": "ResponsibleSector",
   "/state": "States",
   "/stop-type": "StopType",
+  "/regulation-rule": "RegulationRule",
   "/timezone-value": "TimezoneValue",
   "/timezone": "Timezone",
   "/trip-type": "TripType",
@@ -135,7 +137,7 @@ const routeToIcon: Record<string, React.ComponentType<{ className?: string }>> =
   "/fleet-type": CircleDot, "/justification": Scale, "/line": Milestone,
   "/location-group": Map, "/location-type": Waypoints, "/location": MapPin,
   "/position": Navigation, "/region": Flag, "/responsible-sector": Zap,
-  "/state": Map, "/stop-type": CircleDot, "/timezone-value": Timer,
+  "/state": Map, "/stop-type": CircleDot, "/regulation-rule": Scale, "/timezone-value": Timer,
   "/timezone": Clock, "/trip-type": Route, "/truck": Truck,
   "/reports": FileBarChart,
 };
@@ -219,11 +221,13 @@ const apiDelete = async (endpoint: string, id: string): Promise<void> => {
 };
 
 // --- Helpers ---
-const getCellDisplay = (row: Rec, field: FieldSchema, lookups: Record<string, Rec[]>): string => {
+const getCellDisplay = (row: Rec, field: FieldSchema, lookups: Record<string, Rec[]>, t?: (key: string) => string): string => {
   if (field.type === "select" && field.options) {
-    const v = row[field.key];
+    const v = String(row[field.key] ?? "");
     const opt = field.options.find((o) => o.value === v);
-    return opt ? opt.label : String(v ?? "--");
+    if (!opt) return String(row[field.key] ?? "--");
+    const label = opt.label;
+    return (t && label.includes(".")) ? t(label) : label;
   }
   if (field.type === "lookup") {
     const labelFn = field.tableLabelFn || field.lookupLabelFn || "codeDescription";
@@ -280,6 +284,7 @@ const GenericPage = () => {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [searched, setSearched] = useState(false);
   const [searchSnapshot, setSearchSnapshot] = useState<Record<string, string>>({});
+  const [searchTrigger, setSearchTrigger] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isExporting, setIsExporting] = useState(false);
@@ -323,7 +328,7 @@ const GenericPage = () => {
 
   // Fetch main data with server-side pagination
   const { data: paginatedResult, isLoading, isError, error, refetch } = useQuery<PaginatedResult>({
-    queryKey: ["generic", endpoint, JSON.stringify(searchSnapshot), pageNumber, pageSize],
+    queryKey: ["generic", endpoint, JSON.stringify(searchSnapshot), pageNumber, pageSize, searchTrigger],
     queryFn: () => apiFetchPaginated(endpoint, buildFilterParams(searchSnapshot), pageNumber, pageSize),
     enabled: searched,
   });
@@ -458,6 +463,7 @@ const GenericPage = () => {
       }
     }
     setSearchSnapshot({ ...filterValues });
+    setSearchTrigger(prev => prev + 1);
     setSearched(true);
     setPageNumber(1);
   };
@@ -467,6 +473,7 @@ const GenericPage = () => {
     setLocalFilter("");
     setFilterValues({});
     setSearchSnapshot({});
+    setSearchTrigger(0);
     setSearched(false);
     setPageNumber(1);
   };
@@ -488,7 +495,7 @@ const GenericPage = () => {
       if (format === "excel") {
         const XLSX = await import("xlsx");
         const rows = allItems.map((row) =>
-          Object.fromEntries(visibleFields.map((f) => [f.label, getCellDisplay(row, f, lookups)])),
+          Object.fromEntries(visibleFields.map((f) => [f.label, getCellDisplay(row, f, lookups, t)])),
         );
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
@@ -499,7 +506,7 @@ const GenericPage = () => {
         const autoTable = (await import("jspdf-autotable")).default;
 
         const headers = visibleFields.map((f) => f.label);
-        const rows = allItems.map((row) => visibleFields.map((f) => getCellDisplay(row, f, lookups)));
+        const rows = allItems.map((row) => visibleFields.map((f) => getCellDisplay(row, f, lookups, t)));
         const title = t(titleKey);
         const now = new Date().toLocaleString("pt-BR");
 
@@ -906,7 +913,10 @@ const GenericPage = () => {
         return (
           <Select
             value={formData[field.key] ? String(formData[field.key]) : ""}
-            onValueChange={(v) => updateField(field.key, v)}
+            onValueChange={(v) => {
+              const allNumeric = opts.every((o) => /^\d+$/.test(o.value));
+              updateField(field.key, allNumeric ? Number(v) : v);
+            }}
           >
             <SelectTrigger className={`h-8 text-xs ${errClass}`}>
               <SelectValue placeholder="Selecione..." />
@@ -914,7 +924,7 @@ const GenericPage = () => {
             <SelectContent>
               {opts.map((o) => (
                 <SelectItem key={o.value} value={o.value} className="text-xs">
-                  {o.label}
+                  {o.label.includes(".") ? t(o.label) : o.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1047,7 +1057,7 @@ const GenericPage = () => {
       return val != null ? String(val) : "--";
     }
     if ("lookupEndpoint" in field && field.type === "lookup") {
-      return <span>{getCellDisplay(row, field as FieldSchema, lookups)}</span>;
+      return <span>{getCellDisplay(row, field as FieldSchema, lookups, t)}</span>;
     }
     if (field.type === "boolean") {
       const v = row[field.key];
@@ -1085,9 +1095,12 @@ const GenericPage = () => {
     }
     // Handle select fields with options
     if ("options" in field && (field as FieldSchema).options) {
-      const v = row[field.key];
+      const v = String(row[field.key] ?? "");
       const opt = (field as FieldSchema).options!.find((o) => o.value === v);
-      if (opt) return opt.label;
+      if (opt) {
+        const label = opt.label;
+        return (label.includes(".")) ? t(label) : label;
+      }
     }
     const v = row[field.key];
     if (v === null || v === undefined) return "--";
@@ -1108,7 +1121,7 @@ const GenericPage = () => {
                   if (f.type === "boolean") {
                     return (
                       <div key={f.key} className="space-y-1.5" style={{ gridColumn: `span ${span}` }}>
-                        <Label className="text-xs">{f.label}</Label>
+                        <Label className="text-xs">{f.label.includes(".") ? t(f.label) : f.label}</Label>
                         <div className="pt-0.5">
                           <Switch
                             checked={!!formData[f.key]}
@@ -1121,7 +1134,7 @@ const GenericPage = () => {
                   return (
                     <div key={f.key} className="space-y-1" style={{ gridColumn: `span ${f.formColSpan || (f.type === "color" ? 6 : span)}` }}>
                       <Label className="text-xs">
-                        {f.label} {f.required ? "*" : ""}
+                        {f.label.includes(".") ? t(f.label) : f.label} {f.required ? "*" : ""}
                       </Label>
                       {renderField(f)}
                     </div>
@@ -1147,7 +1160,7 @@ const GenericPage = () => {
                   <div className={`grid gap-2 ${booleanFields.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
                     {booleanFields.map((f) => (
                       <div key={f.key} className="flex items-center justify-between rounded-md border px-2 py-1.5">
-                        <Label className="text-xs">{f.label}</Label>
+                        <Label className="text-xs">{f.label.includes(".") ? t(f.label) : f.label}</Label>
                         <Switch
                           checked={!!formData[f.key]}
                           onCheckedChange={(v) => updateField(f.key, v)}
@@ -1331,7 +1344,7 @@ const GenericPage = () => {
                               }}
                             >
                               <div className={`flex items-center gap-1 ${isCenter ? "justify-center" : ""}`}>
-                                {col.label}
+                                {col.label.includes(".") ? t(col.label) : col.label}
                                 <SortIcon className={`h-3 w-3 ${isSorted ? "text-foreground" : "text-muted-foreground/50"}`} />
                               </div>
                             </TableHead>
@@ -1464,6 +1477,8 @@ const GenericPage = () => {
           const parts: string[] = [];
           // Primary identifiers: licensePlate, code, name, description
           if (deleteItem.licensePlate) parts.push(String(deleteItem.licensePlate));
+           if (deleteItem.stopTypeCode) parts.push(String(deleteItem.stopTypeCode));
+           if (deleteItem.ruleCode) parts.push(String(deleteItem.ruleCode));
           if (deleteItem.code) parts.push(String(deleteItem.code));
           if (deleteItem.name && !deleteItem.code) parts.push(String(deleteItem.name));
           if (deleteItem.description && !deleteItem.code && !deleteItem.name) parts.push(String(deleteItem.description));

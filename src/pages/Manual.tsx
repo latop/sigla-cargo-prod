@@ -118,6 +118,12 @@ const manualData: ManualGroup[] = [
         objective:
           "O menu lateral organiza as telas em grupos (Coordenação, Monitoramento, etc.). O sistema de abas internas permite manter até 5 telas abertas simultaneamente com preservação de estado. Use os botões de expandir/compactar no topo do menu para gerenciar todos os grupos.",
       },
+      {
+        name: "Botão Pesquisar",
+        route: "-",
+        objective:
+          "Em todas as telas de cadastro, o botão 'Pesquisar' sempre realiza uma nova consulta à API, mesmo que os filtros não tenham sido alterados. Isso garante que os dados exibidos estejam sempre atualizados.",
+      },
     ],
   },
   {
@@ -204,7 +210,7 @@ const manualData: ManualGroup[] = [
         filters:
           "Data Inicial e Data Final para consultar o histórico de importações. O período padrão é D-1 a D+1.",
         listing:
-          "Tabela de histórico com colunas: Arquivo, Data/Hora, Status e Resultado do check.",
+          "Tabela de histórico com colunas: Arquivo, Data/Hora, Status e Resultado do check. As colunas podem ser ordenadas clicando no cabeçalho (ascendente/descendente).",
         creation:
           "Upload de arquivo com seleção obrigatória de Grupo de Localidade. Clique em 'Importar' para enviar.",
       },

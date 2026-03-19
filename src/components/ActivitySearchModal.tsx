@@ -8,10 +8,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { LookupSearchField } from "@/components/LookupSearchField";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { API_BASE } from "@/config/api";
-import { cn } from "@/lib/utils";
-
 
 type Rec = Record<string, unknown>;
 
@@ -24,86 +24,89 @@ interface PaginationMeta {
   HasPrevious: boolean;
 }
 
-interface LineSearchModalProps {
+interface ActivitySearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (id: string, item: Rec) => void;
-  /** Pre-fill origin filter from parent form */
-  initialOrigId?: string;
-  /** Pre-fill destination filter from parent form */
-  initialDestId?: string;
 }
 
-const LOCATION_MODAL_COLUMNS = ["code", "name", "codeIntegration2"];
-const LOCATION_COLUMN_LABELS: Record<string, string> = {
-  code: "Código", name: "Nome", codeIntegration2: "Cód. Integração TMS",
+const formatTime = (v?: string | null) => {
+  if (!v) return "--";
+  try {
+    const d = new Date(v);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "--";
+  }
 };
 
 const COLUMNS = [
   { key: "code", label: "Código" },
-  { key: "locationOrigCode", label: "Origem" },
-  { key: "locationDestCode", label: "Destino" },
-  { key: "fleetGroupCode", label: "Grupo de Frota" },
-  { key: "tripTypeCode", label: "Tipo de Viagem" },
+  { key: "description", label: "Descrição" },
+  { key: "startTime", label: "Início" },
+  { key: "endTime", label: "Fim" },
+  { key: "activityTypeCode", label: "Tipo Atividade" },
+  { key: "flgActiveLabel", label: "Ativo" },
 ];
 
-const fetchLocationById = async (id: string): Promise<Rec | null> => {
-  try {
-    const res = await fetch(`${API_BASE}/Location/${id}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-};
-
-export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, initialDestId }: LineSearchModalProps) {
+export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySearchModalProps) {
   const [filterCode, setFilterCode] = useState("");
-  const [filterOrigId, setFilterOrigId] = useState("");
-  const [filterDestId, setFilterDestId] = useState("");
+  const [filterActivityTypeId, setFilterActivityTypeId] = useState("all");
+  const [filterActive, setFilterActive] = useState<string>("all");
   const [items, setItems] = useState<Rec[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [activityTypes, setActivityTypes] = useState<{ id: string; code: string }[]>([]);
 
-  // Pre-fill filters from parent when modal opens
+  // Load activity types for dropdown
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/ActivityType?PageSize=200`);
+        if (!res.ok) return;
+        const data: Rec[] = await res.json();
+        const types = data
+          .map((t) => ({ id: String(t.id), code: String(t.code || "") }))
+          .filter((t) => t.code)
+          .sort((a, b) => a.code.localeCompare(b.code));
+        setActivityTypes(types);
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
   const prevOpenRef = useRef(false);
   useEffect(() => {
     if (open && !prevOpenRef.current) {
-      setFilterOrigId(initialOrigId || "");
-      setFilterDestId(initialDestId || "");
       setFilterCode("");
+      setFilterActivityTypeId("all");
+      setFilterActive("all");
       setItems([]);
       setPagination(null);
       setSearched(false);
     }
     prevOpenRef.current = open;
-  }, [open, initialOrigId, initialDestId]);
+  }, [open]);
 
-  const hasFilter = filterCode.trim() || filterOrigId || filterDestId;
+  const hasFilter = filterCode.trim() || filterActivityTypeId !== "all" || filterActive !== "all";
 
-  const doSearch = useCallback(async (pageNum = 1) => {
-    if (!filterCode.trim() && !filterOrigId && !filterDestId) return;
+  const doSearch = useCallback(async (pageNum = 1, ps = pageSize) => {
     setLoading(true);
     setSearched(true);
     try {
       const params = new URLSearchParams();
-      if (filterCode.trim()) params.set("filter1String", filterCode.trim());
-      if (filterOrigId) params.set("filter1Id", filterOrigId);
-      if (filterDestId) params.set("filter2Id", filterDestId);
-      params.set("PageSize", "10");
+      if (filterCode.trim()) params.set("Filter1String", filterCode.trim());
+      if (filterActivityTypeId !== "all") params.set("Filter1Id", filterActivityTypeId);
+      if (filterActive === "true") params.set("Filter2Bool", "true");
+      if (filterActive === "false") params.set("Filter2Bool", "false");
+      params.set("PageSize", String(ps));
       params.set("PageNumber", String(pageNum));
 
-      const res = await fetch(`${API_BASE}/Line?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/Activity?${params.toString()}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const rawResponse: Rec[] = await res.json();
-
-      // API returns wrapped objects: { line: {...}, qtdLineSections: N }
-      const rawItems: Rec[] = rawResponse.map((wrapper) => {
-        const lineData = wrapper.line as Rec | undefined;
-        return lineData ? { ...lineData, qtdLineSections: wrapper.qtdLineSections } : wrapper;
-      });
+      const rawItems: Rec[] = await res.json();
 
       const pHeader = res.headers.get("x-pagination");
       const pag: PaginationMeta = pHeader
@@ -111,17 +114,13 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
         : { TotalCount: rawItems.length, PageSize: 10, CurrentPage: pageNum, TotalPages: 1, HasNext: false, HasPrevious: false };
 
       const resolved = rawItems.map((item) => {
-        const locationOrig = item.locationOrig as Rec | null;
-        const locationDest = item.locationDest as Rec | null;
-        const fleetGroup = item.fleetGroup as Rec | null;
-        const tripType = item.tripType as Rec | null;
-
+        const activityType = item.activityType as Rec | null;
         return {
           ...item,
-          locationOrigCode: locationOrig?.code ?? "--",
-          locationDestCode: locationDest?.code ?? "--",
-          fleetGroupCode: fleetGroup?.code ?? "--",
-          tripTypeCode: tripType?.code ?? "--",
+          startTime: formatTime(item.start as string | null),
+          endTime: formatTime(item.end as string | null),
+          activityTypeCode: activityType?.code ?? "--",
+          flgActiveLabel: item.flgActive === true ? "Sim" : item.flgActive === false ? "Não" : "--",
         };
       });
 
@@ -133,7 +132,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
     } finally {
       setLoading(false);
     }
-  }, [filterCode, filterOrigId, filterDestId]);
+  }, [filterCode, filterActivityTypeId, filterActive, pageSize]);
 
   const handleSelect = (item: Rec) => {
     onSelect(String(item.id), item);
@@ -142,19 +141,20 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
 
   const resetFilters = () => {
     setFilterCode("");
-    setFilterOrigId("");
-    setFilterDestId("");
+    setFilterActivityTypeId("all");
+    setFilterActive("all");
     setItems([]);
     setPagination(null);
     setSearched(false);
+    setPageSize(10);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">Pesquisar Linha</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de linhas com filtros</DialogDescription>
+          <DialogTitle className="text-sm font-display">Pesquisar Atividade</DialogTitle>
+          <DialogDescription className="sr-only">Busca avançada de atividades com filtros</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}
@@ -164,40 +164,37 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
             <Input
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => { if (e.key === "Enter" && hasFilter) doSearch(1); }}
-              placeholder="Código da linha..."
+              onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
+              placeholder="Código da atividade..."
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Origem</label>
-            <LookupSearchField
-              endpoint="Location"
-              labelFn="codeOnly"
-              searchFilterParam="Filter1String"
-              value={filterOrigId}
-              onChange={(id) => setFilterOrigId(id)}
-              placeholder="Origem..."
-              nullable
-              className="h-8 text-xs"
-              modalVisibleColumns={LOCATION_MODAL_COLUMNS}
-              columnLabels={LOCATION_COLUMN_LABELS}
-            />
+            <label className="text-xs font-medium text-muted-foreground">Tipo de Atividade</label>
+            <Select value={filterActivityTypeId} onValueChange={setFilterActivityTypeId}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {activityTypes.map((at) => (
+                  <SelectItem key={at.id} value={at.id}>{at.code}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Destino</label>
-            <LookupSearchField
-              endpoint="Location"
-              labelFn="codeOnly"
-              searchFilterParam="Filter1String"
-              value={filterDestId}
-              onChange={(id) => setFilterDestId(id)}
-              placeholder="Destino..."
-              nullable
-              className="h-8 text-xs"
-              modalVisibleColumns={LOCATION_MODAL_COLUMNS}
-              columnLabels={LOCATION_COLUMN_LABELS}
-            />
+            <label className="text-xs font-medium text-muted-foreground">Ativo</label>
+            <Select value={filterActive} onValueChange={setFilterActive}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="true">Sim</SelectItem>
+                <SelectItem value="false">Não</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -206,7 +203,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
             size="sm"
             className="h-8 text-xs gap-1"
             onClick={() => doSearch(1)}
-            disabled={loading || !hasFilter}
+            disabled={loading}
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             Pesquisar
@@ -229,7 +226,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={COLUMNS.length} className="text-center text-xs text-muted-foreground py-8">
-                    {loading ? "Carregando..." : searched ? "Nenhum resultado encontrado." : "Preencha ao menos um filtro e clique em Pesquisar."}
+                    {loading ? "Carregando..." : searched ? "Nenhum resultado encontrado." : "Preencha os filtros e clique em Pesquisar."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -252,14 +249,26 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
         </div>
 
         {/* Pagination */}
-        {pagination && pagination.TotalPages > 1 && (
+        {pagination && (
           <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
-            <span>{pagination.TotalCount} registro(s)</span>
+            <div className="flex items-center gap-2">
+              <Select value={String(pageSize)} onValueChange={(v) => { const ps = Number(v); setPageSize(ps); doSearch(1, ps); }}>
+                <SelectTrigger className="h-7 w-[70px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 20, 50, 100].map((s) => (
+                    <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span>{pagination.TotalCount} registro(s)</span>
+            </div>
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7"
                 disabled={!pagination.HasPrevious}
                 onClick={() => doSearch(page - 1)}
               >
@@ -269,7 +278,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
               <Button
                 variant="outline"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7"
                 disabled={!pagination.HasNext}
                 onClick={() => doSearch(page + 1)}
               >

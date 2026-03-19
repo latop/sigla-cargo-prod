@@ -66,7 +66,7 @@ export function FloatingPanel({ title, children, onClose, width = 480 }: Floatin
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="max-h-[88vh] overflow-y-auto">
+            <CardContent className="max-h-[92vh] overflow-y-auto">
               {children}
             </CardContent>
           </Card>

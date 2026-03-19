@@ -240,6 +240,7 @@ const screens: ScreenDoc[] = [
       "Dropdown dinâmico de Grupo de Localidade (LocationGroup.Code)",
       "Barra de progresso durante upload",
       "Histórico de importações com filtro por período",
+      "Ordenação por colunas no histórico (ascendente/descendente)",
       "Download de template Excel",
     ],
   },
@@ -567,7 +568,7 @@ interface SharedComponentDoc {
 }
 
 const sharedComponentsDocs: SharedComponentDoc[] = [
-  { name: "GenericPage", file: "src/pages/GenericPage.tsx", description: "Controlador universal CRUD baseado em schema (entitySchemas.ts). Gera filtros, tabela paginada e formulário automaticamente." },
+  { name: "GenericPage", file: "src/pages/GenericPage.tsx", description: "Controlador universal CRUD baseado em schema (entitySchemas.ts). Gera filtros, tabela paginada e formulário automaticamente. Utiliza searchTrigger para invalidar cache do React Query a cada clique em Pesquisar, garantindo nova consulta à API." },
   { name: "FloatingPanel", file: "src/components/FloatingPanel.tsx", description: "Painel flutuante para formulários de criação/edição. Posicionado no canto superior esquerdo com largura padrão de 560px." },
   { name: "DatePickerField", file: "src/components/DatePickerField.tsx", description: "Campo de data com máscara dd/mm/aaaa, calendário popup e suporte a internacionalização (pt, en, es)." },
   { name: "LookupSearchField", file: "src/components/LookupSearchField.tsx", description: "Campo de autocomplete com modal de pesquisa para grandes conjuntos de dados. Suporta busca server-side." },

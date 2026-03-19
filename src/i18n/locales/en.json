@@ -34,7 +34,7 @@
     "departuresAndArrivals": "Arrivals & Departures",
     "vehicleLink": "Vehicle Planning",
     "driversRequest": "Drivers Request",
-    "driversSchedule": "Drivers Schedule",
+    "driversSchedule": "Driver Circuits",
     "publishJourney": "Publish Journey",
     "releaseDriver": "Trip Release",
     "importDemands": "Demand Import",
@@ -61,6 +61,7 @@
     "locationType": "Location Type",
     "location": "Location",
     "position": "Driver Position",
+    "regulationRule": "Regulation Rule",
     "region": "Region",
     "responsibleSector": "Responsible Sector",
     "state": "State",
@@ -172,6 +173,21 @@
     "copyConfirmButton": "Yes, copy",
     "copySuccess": "Line copied successfully!",
     "copyError": "Error copying line"
+  },
+  "stopType": {
+    "regulationType": "Regulation Type",
+    "meal": "Meal",
+    "rest": "Rest",
+    "break": "Break",
+    "wait": "Wait",
+    "operationalStop": "Operational Stop"
+  },
+  "regulationRule": {
+    "minutes": "Minutes",
+    "days": "Days",
+    "weeks": "Weeks",
+    "code": "Code",
+    "flag": "Flag"
   },
   "common": {
     "search": "Search",

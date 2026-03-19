@@ -15,6 +15,23 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.13.0",
+    date: "2026-03-19",
+    type: "improvement",
+    changes: [
+      {
+        pt: "Ordenação de colunas (ascendente/descendente) na tabela de histórico da Importação de Demandas",
+        en: "Column sorting (ascending/descending) in the Demand Import history table",
+        es: "Ordenación de columnas (ascendente/descendente) en la tabla de historial de Importación de Demandas",
+      },
+      {
+        pt: "Botão Pesquisar sempre realiza nova consulta à API, mesmo sem alteração nos filtros (todas as telas de cadastro genérico)",
+        en: "Search button always performs a new API query, even without filter changes (all generic registration screens)",
+        es: "Botón Buscar siempre realiza nueva consulta a la API, incluso sin cambios en los filtros (todas las pantallas de registro genérico)",
+      },
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-03-13",
     type: "feature",
@@ -336,7 +353,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.12.0";
+export const APP_VERSION = "1.13.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

@@ -75,6 +75,16 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
           muted: "hsl(var(--sidebar-muted))",
         },
+        board: {
+          DEFAULT: "hsl(var(--board-bg))",
+          surface: "hsl(var(--board-surface))",
+          "surface-alt": "hsl(var(--board-surface-alt))",
+          border: "hsl(var(--board-border))",
+          text: "hsl(var(--board-text))",
+          "text-secondary": "hsl(var(--board-text-secondary))",
+          "text-muted": "hsl(var(--board-text-muted))",
+          header: "hsl(var(--board-header-bg))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

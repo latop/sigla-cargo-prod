@@ -267,6 +267,29 @@ export const entitySchemas: Record<string, EntitySchema> = {
     ],
   },
 
+  "/regulation-rule": {
+    endpoint: "RegulationRule",
+    titleKey: "menu.regulationRule",
+    feminine: true,
+    formWidth: 720,
+    fields: [
+      { key: "ruleCode", label: "Código da Regra", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 3 },
+      { key: "isActive", label: "Ativo", type: "boolean", formColSpan: 1 },
+      { key: "unit", label: "Unidade", type: "select", nullable: true, formColSpan: 2, options: [
+        { value: "MINUTES", label: "regulationRule.minutes" },
+        { value: "DAYS", label: "regulationRule.days" },
+        { value: "WEEKS", label: "regulationRule.weeks" },
+        { value: "CODE", label: "regulationRule.code" },
+        { value: "FLAG", label: "regulationRule.flag" },
+      ] },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 200, uppercase: true, formColSpan: 6, hideInTable: true },
+      { key: "valueInt", label: "Valor Inteiro", type: "number", nullable: true, formColSpan: 2 },
+      { key: "valueDecimal", label: "Valor Decimal", type: "number", nullable: true, formColSpan: 2 },
+      { key: "valueText", label: "Valor Texto", type: "string", nullable: true, maxLength: 200, formColSpan: 2 },
+      { key: "notes", label: "Observações", type: "string", nullable: true, maxLength: 500, formColSpan: 6, hideInTable: true },
+    ],
+  },
+
   "/region": {
     endpoint: "Regions",
     titleKey: "menu.region",
@@ -367,9 +390,10 @@ export const entitySchemas: Record<string, EntitySchema> = {
     endpoint: "StopType",
     titleKey: "menu.stopType",
     fields: [
-      { key: "stopTypeCode", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
-      { key: "stopTime", label: "Tempo (min)", type: "number", required: true, formColSpan: 2 },
-      { key: "flgJourney", label: "Jornada Motorista", type: "boolean", formColSpan: 2 },
+      { key: "stopTypeCode", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 3 },
+      { key: "stopTime", label: "Tempo (min)", type: "number", required: true, formColSpan: 3 },
+      { key: "regulationType", label: "stopType.regulationType", type: "select", required: true, options: [{ value: "1", label: "stopType.meal" }, { value: "2", label: "stopType.rest" }, { value: "3", label: "stopType.break" }, { value: "4", label: "stopType.wait" }, { value: "5", label: "stopType.operationalStop" }], formColSpan: 3 },
+      { key: "flgJourney", label: "Jornada Motorista", type: "select", required: true, options: [{ value: "S", label: "common.yes" }, { value: "N", label: "common.no" }], formColSpan: 3 },
     ],
   },
 

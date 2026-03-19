@@ -55,6 +55,8 @@ interface LookupSearchFieldProps {
   onMultiSelectConfirm?: (selections: { id: string; label: string; item: Rec }[]) => void;
   /** Key to extract display value from item in multi-select (default: uses labelFn) */
   multiSelectValueKey?: string;
+  /** Extra query parameters to append to every search request */
+  extraParams?: Record<string, string>;
 }
 
 interface PaginationMeta {
@@ -72,11 +74,15 @@ const fetchSearch = async (
   query: string,
   pageSize = 15,
   pageNumber = 1,
+  extraParams?: Record<string, string>,
 ): Promise<{ items: Rec[]; pagination: PaginationMeta }> => {
   const params = new URLSearchParams();
   if (query.trim()) params.set(searchFilterParam, query.trim());
   params.set("PageSize", String(pageSize));
   params.set("PageNumber", String(pageNumber));
+  if (extraParams) {
+    Object.entries(extraParams).forEach(([k, v]) => params.set(k, v));
+  }
   const res = await fetch(`${API_BASE}/${endpoint}?${params.toString()}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const items: Rec[] = await res.json();
@@ -117,6 +123,7 @@ export function LookupSearchField({
   selectedValues = [],
   onMultiSelectConfirm,
   multiSelectValueKey,
+  extraParams,
 }: LookupSearchFieldProps) {
   const [displayLabel, setDisplayLabel] = useState(initialLabel || "");
   const [inputValue, setInputValue] = useState("");
@@ -172,7 +179,7 @@ export function LookupSearchField({
         return;
       }
       setLoading(true);
-      fetchSearch(endpoint, searchFilterParam, query, 10)
+      fetchSearch(endpoint, searchFilterParam, query, 10, 1, extraParams)
         .then(({ items }) => {
           const transformed = transformItem ? items.map(transformItem) : items;
           // Sort alphabetically by label
@@ -230,7 +237,7 @@ export function LookupSearchField({
     async (page = 1) => {
       setModalLoading(true);
       try {
-        const { items, pagination } = await fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page);
+        const { items, pagination } = await fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page, extraParams);
         const transformed = transformItem ? items.map(transformItem) : items;
         transformed.sort((a, b) => {
           const la = (a.code || a.name || a.description || "").toString().toLowerCase();
