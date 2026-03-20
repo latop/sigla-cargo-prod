@@ -15,6 +15,60 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.15.0",
+    date: "2026-03-20",
+    type: "improvement",
+    changes: [
+      {
+        pt: "Largura das colunas Iní./Fim Plan. ampliada para 155px garantindo exibição completa de data e hora",
+        en: "Start/End Planned column width increased to 155px ensuring full date and time display",
+        es: "Ancho de columnas Iní./Fin Plan. ampliado a 155px asegurando visualización completa de fecha y hora",
+      },
+      {
+        pt: "Fonte dos campos de data reduzida para melhor acomodação do formato DD/MM/AAAA HH:MM",
+        en: "Date field font reduced for better accommodation of DD/MM/YYYY HH:MM format",
+        es: "Fuente de campos de fecha reducida para mejor acomodación del formato DD/MM/AAAA HH:MM",
+      },
+      {
+        pt: "Fonte da coluna Linha reduzida para melhor compactação visual",
+        en: "Line column font reduced for better visual compaction",
+        es: "Fuente de columna Línea reducida para mejor compactación visual",
+      },
+    ],
+  },
+  {
+    version: "1.14.0",
+    date: "2026-03-20",
+    type: "improvement",
+    changes: [
+      {
+        pt: "Painel de edição de circuitos: altura reduzida, largura aumentada e scroll horizontal na parte inferior",
+        en: "Circuit edit panel: reduced height, increased width and horizontal scroll at the bottom",
+        es: "Panel de edición de circuitos: altura reducida, ancho aumentado y scroll horizontal en la parte inferior",
+      },
+      {
+        pt: "Modal de detalhe da viagem com layout master-detail exibindo seções (trechos)",
+        en: "Trip detail modal with master-detail layout displaying sections (segments)",
+        es: "Modal de detalle del viaje con layout master-detail mostrando secciones (tramos)",
+      },
+      {
+        pt: "Campos de data/hora do cabeçalho padronizados no mesmo tamanho dos demais campos",
+        en: "Header date/time fields standardized to the same size as other fields",
+        es: "Campos de fecha/hora del encabezado estandarizados al mismo tamaño que los demás campos",
+      },
+      {
+        pt: "Colunas de Linha/Origem/Destino compactadas e Iní./Fim Plan. ampliadas na tabela de tasks",
+        en: "Line/Origin/Destination columns compacted and Start/End Planned expanded in the tasks table",
+        es: "Columnas de Línea/Origen/Destino compactadas e Iní./Fin Plan. ampliadas en la tabla de tareas",
+      },
+      {
+        pt: "Ícones de ações alinhados à direita e fonte reduzida nos campos de data",
+        en: "Action icons right-aligned and reduced font size in date fields",
+        es: "Íconos de acciones alineados a la derecha y fuente reducida en los campos de fecha",
+      },
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-03-19",
     type: "improvement",
@@ -353,7 +407,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.13.0";
+export const APP_VERSION = "1.15.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

@@ -752,6 +752,20 @@ const ImportMapPage = () => {
               {loadingRecords ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
               {l("search")}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 text-xs gap-1.5"
+              onClick={() => {
+                setFilterStart(format(subDays(new Date(), 1), "yyyy-MM-dd"));
+                setFilterEnd(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+                setFilterLocationGroup("");
+                setRecords([]);
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              {l("clear")}
+            </Button>
           </div>
 
           {/* Table */}

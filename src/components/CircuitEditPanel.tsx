@@ -14,12 +14,16 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { FloatingPanel } from "@/components/FloatingPanel";
 import { LookupSearchField } from "@/components/LookupSearchField";
 import { LineSearchModal } from "@/components/LineSearchModal";
 import { ActivitySearchModal } from "@/components/ActivitySearchModal";
 import { DailyTripSearchModal } from "@/components/DailyTripSearchModal";
+import { DatePickerField } from "@/components/DatePickerField";
 import { API_BASE } from "@/config/api";
 
 // --- Types ---
@@ -139,6 +143,8 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
 
   const [deleteTaskIdx, setDeleteTaskIdx] = useState<number | null>(null);
   const [createReturnIdx, setCreateReturnIdx] = useState<number | null>(null);
+  const [detailData, setDetailData] = useState<Record<string, unknown> | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Load circuit data
   useEffect(() => {
@@ -219,24 +225,70 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
     setDeleteTaskIdx(null);
   };
 
-  const handleCreateReturn = (idx: number) => {
+  const handleCreateReturn = async (idx: number) => {
     const task = tasks[idx];
     if (!task) return;
+
+    const lineCode = task.lineCode;
+    let returnLineCode = lineCode;
+    let returnLineId = task.lineId;
+    let returnLocOrig = task.locationDestCode;
+    let returnLocDest = task.locationOrigCode;
+
+    if (lineCode) {
+      try {
+        const encodedLine = encodeURIComponent(lineCode);
+        const res = await fetch(`${API_BASE}/gantt/GetDailyTripDetail?lineCode=${encodedLine}&isReturn=true`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.lineCode) returnLineCode = data.lineCode;
+          if (data.lineId) returnLineId = data.lineId;
+          if (data.locOrig || data.locationOrigCode) returnLocOrig = data.locOrig || data.locationOrigCode;
+          if (data.locDest || data.locationDestCode) returnLocDest = data.locDest || data.locationDestCode;
+        }
+      } catch (err) {
+        console.warn("Erro ao buscar linha de retorno, usando inversão padrão:", err);
+      }
+    }
+
+    // Calculate startPlanned = last endPlanned + 1 hour
+    const allEndDates = tasks.map(t => t.endPlanned).filter(Boolean).map(d => new Date(d!).getTime()).filter(t => !isNaN(t));
+    const lastEnd = allEndDates.length > 0 ? Math.max(...allEndDates) : null;
+    const returnStart = lastEnd ? new Date(lastEnd + 3600000).toISOString().replace(/\.\d{3}Z$/, "") : task.endPlanned;
+
     setTasks((prev) => [
       ...prev,
       {
         type: "Trip",
         dt: null,
         sto: null,
-        lineId: null,
-        locationOrigCode: task.locationDestCode,
-        locationDestCode: task.locationOrigCode,
-        startPlanned: task.endPlanned,
+        lineId: returnLineId,
+        lineCode: returnLineCode,
+        locationOrigCode: returnLocOrig,
+        locationDestCode: returnLocDest,
+        startPlanned: returnStart,
         endPlanned: null,
       },
     ]);
     setCreateReturnIdx(null);
     toast({ title: "Retorno criado", description: "Viagem de retorno adicionada ao final da lista." });
+  };
+
+  const handleOpenDetail = async (task: TaskDriver & { _type: string }) => {
+    if (task._type !== "Trip") return;
+    const idTask = task.idTask || task.id;
+    if (!idTask) return;
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/gantt/GetDailyTripDetail?idTask=${idTask}`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      setDetailData(data);
+    } catch (err: any) {
+      toast({ title: "Erro ao carregar detalhe", description: err.message, variant: "destructive" });
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -249,11 +301,14 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
       const payload = {
         circuitJourneyId: formData.id || formData.circuitJourneyId,
         driverId: formData.driverId,
+        nickName: formData.nickName,
         notes: formData.notes,
+        startDate: isCreateMode ? "1900-01-01T00:00" : (formData.startPlanned || formData.startDate || null),
+        endDate: isCreateMode ? "1900-01-01T00:00" : (formData.endPlanned || formData.endDate || null),
         tasksDriver: tasks.map((t, i) => {
           const isActivity = t.type === "Activity" || !!(t.activityId || t.activityCode);
           return {
-            idTask: t.idTask || t.id || null,
+            idTask: t.idTask || t.id || "00000000-0000-0000-0000-000000000000",
             seq: t.seq ?? i + 1,
             demand: t.sto || t.demand || null,
             dailyTripId: t.dailyTripId || null,
@@ -267,6 +322,7 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
             endActual: isActivity ? (t.endPlanned || null) : (t.endActual || null),
             activityId: t.activityId || null,
             activityCode: t.activityCode || null,
+            type: isActivity ? "A" : "V",
           };
         }),
       };
@@ -298,7 +354,7 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
 
   if (loading) {
     return (
-      <FloatingPanel title="Carregando..." onClose={onClose} width={1100}>
+      <FloatingPanel title="Carregando..." onClose={onClose} width={1300}>
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -315,8 +371,8 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
 
   return (
     <>
-      <FloatingPanel title={panelTitle} onClose={onClose} width={1100}>
-        <div className="flex flex-col h-[85vh] pt-1 gap-1">
+      <FloatingPanel title={panelTitle} onClose={onClose} width={1300} maxHeight="50vh">
+        <div className="flex flex-col h-[50vh] pt-1 gap-1">
           {/* Motorista (editável) + GPID */}
           <div className="grid grid-cols-6 gap-1.5">
             <div className="col-span-3">
@@ -399,51 +455,51 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
           {/* Badges informativos em faixa única */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5">
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Cód. Circuito:</span>
-              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{formData.circuitCode || "--"}</span>
+              <span className="text-xs text-muted-foreground">Cód. Circuito:</span>
+              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold">{formData.circuitCode || "--"}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Status:</span>
-              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${statusColors[formData.status || ""] || "bg-muted text-muted-foreground"}`}>{statusLabels[formData.status || ""] || formData.status || "--"}</span>
+              <span className="text-xs text-muted-foreground">Status:</span>
+              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-sm font-semibold ${statusColors[formData.status || ""] || "bg-muted text-muted-foreground"}`}>{statusLabels[formData.status || ""] || formData.status || "--"}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Publicado:</span>
-              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${formData.published ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+              <span className="text-xs text-muted-foreground">Publicado:</span>
+              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-sm font-semibold ${formData.published ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                 {formData.published ? "Sim" : "Não"}
               </span>
             </div>
             <span className="text-muted-foreground/30">|</span>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Iní. Plan.:</span>
-              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{formatDT(formData.startPlanned)}</span>
+              <span className="text-xs text-muted-foreground">Iní. Plan.:</span>
+              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold whitespace-nowrap">{formatDT(formData.startPlanned)}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Fim Plan.:</span>
-              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{formatDT(formData.endPlanned)}</span>
+              <span className="text-xs text-muted-foreground">Fim Plan.:</span>
+              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold whitespace-nowrap">{formatDT(formData.endPlanned)}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Iní. Real.:</span>
-              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{formatDT(formData.startActual)}</span>
+              <span className="text-xs text-muted-foreground">Iní. Real.:</span>
+              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold whitespace-nowrap">{formatDT(formData.startActual)}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Fim Real.:</span>
-              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{formatDT(formData.endActual)}</span>
+              <span className="text-xs text-muted-foreground">Fim Real.:</span>
+              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold whitespace-nowrap">{formatDT(formData.endActual)}</span>
             </div>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 space-y-1">
             <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento</h4>
-            <div className="overflow-auto flex-1 border rounded-md">
+            <div className="flex-1 min-h-0 border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                    <TableRow className="bg-muted/30">
                      <TableHead className="h-8 text-xs px-1 w-8">Seq</TableHead>
                      <TableHead className="h-8 text-xs px-1 min-w-[150px]">DT/STO / Atividade</TableHead>
-                     <TableHead className="h-8 text-xs px-1">Linha</TableHead>
-                     <TableHead className="h-8 text-xs px-1">Origem</TableHead>
-                     <TableHead className="h-8 text-xs px-1">Destino</TableHead>
-                     <TableHead className="h-8 text-xs px-1 min-w-[115px]">Iní. Plan.</TableHead>
-                     <TableHead className="h-8 text-xs px-1 min-w-[115px]">Fim Plan.</TableHead>
+                     <TableHead className="h-8 text-xs px-1 max-w-[80px]">Linha</TableHead>
+                     <TableHead className="h-8 text-xs px-1 max-w-[70px]">Origem</TableHead>
+                     <TableHead className="h-8 text-xs px-1 max-w-[70px]">Destino</TableHead>
+                     <TableHead className="h-8 text-[10px] px-1 min-w-[155px]">Iní. Plan.</TableHead>
+                     <TableHead className="h-8 text-[10px] px-1 min-w-[155px]">Fim Plan.</TableHead>
                      <TableHead className="h-8 text-xs px-1 whitespace-nowrap">Iní. Real.</TableHead>
                      <TableHead className="h-8 text-xs px-1 whitespace-nowrap">Fim Real.</TableHead>
                      <TableHead className="h-8 text-xs px-1 text-center w-16">Ações</TableHead>
@@ -493,7 +549,7 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
                               </Button>
                             )}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5">
+                          <TableCell className="h-8 text-[9px] px-1 py-0.5">
                             {isTrip ? (
                               hasDailyTrip ? (
                                 <span className="text-foreground">{task.lineCode || "--"}</span>
@@ -509,53 +565,55 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
                               )
                             ) : <span className="text-muted-foreground">--</span>}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5 whitespace-nowrap">
+                          <TableCell className="h-8 text-[10px] px-1 py-0.5 whitespace-nowrap">
                             {task.locationOrigCode || task.locOrig || "--"}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5 whitespace-nowrap">
+                          <TableCell className="h-8 text-[10px] px-1 py-0.5 whitespace-nowrap">
                             {task.locationDestCode || task.locDest || "--"}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5">
+                          <TableCell className="h-8 text-[9px] px-1 py-0.5">
                             {canEditPlanned ? (
-                              <Input
-                                type="datetime-local"
-                                className="h-6 text-[9px] px-0 w-[110px]"
-                                value={toDatetimeLocal(task.startPlanned)}
-                                onChange={(e) => {
-                                  updateTask(task._idx, "startPlanned", e.target.value || null);
-                                  if (!isTrip) updateTask(task._idx, "startActual", e.target.value || null);
+                              <DatePickerField
+                                value={task.startPlanned}
+                                onChange={(val) => {
+                                  updateTask(task._idx, "startPlanned", val);
+                                  if (!isTrip) updateTask(task._idx, "startActual", val);
                                 }}
+                                includeTime
+                                className="w-[155px]"
+                                inputClassName="text-[8px]"
                               />
                             ) : (
-                              <span className="whitespace-nowrap">{formatDT(task.startPlanned)}</span>
+                              <span className="whitespace-nowrap text-[8px]">{formatDT(task.startPlanned)}</span>
                             )}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5">
+                          <TableCell className="h-8 text-[9px] px-1 py-0.5">
                             {canEditPlanned ? (
-                              <Input
-                                type="datetime-local"
-                                className="h-6 text-[9px] px-0 w-[110px]"
-                                value={toDatetimeLocal(task.endPlanned)}
-                                onChange={(e) => {
-                                  updateTask(task._idx, "endPlanned", e.target.value || null);
-                                  if (!isTrip) updateTask(task._idx, "endActual", e.target.value || null);
+                              <DatePickerField
+                                value={task.endPlanned}
+                                onChange={(val) => {
+                                  updateTask(task._idx, "endPlanned", val);
+                                  if (!isTrip) updateTask(task._idx, "endActual", val);
                                 }}
+                                includeTime
+                                className="w-[155px]"
+                                inputClassName="text-[8px]"
                               />
                             ) : (
-                              <span className="whitespace-nowrap">{formatDT(task.endPlanned)}</span>
+                              <span className="whitespace-nowrap text-[8px]">{formatDT(task.endPlanned)}</span>
                             )}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5 whitespace-nowrap">
+                          <TableCell className="h-8 text-[10px] px-1 py-0.5 whitespace-nowrap">
                             {formatDT(!isTrip ? task.startPlanned : task.startActual)}
                           </TableCell>
-                          <TableCell className="h-8 text-xs px-1 py-0.5 whitespace-nowrap">
+                          <TableCell className="h-8 text-[10px] px-1 py-0.5 whitespace-nowrap">
                             {formatDT(!isTrip ? task.endPlanned : task.endActual)}
                           </TableCell>
                           <TableCell className="h-7 px-1.5 py-0.5">
-                            <div className="flex gap-0.5 justify-center">
+                            <div className="flex gap-0.5 justify-end">
                               {isTrip && (
                                 <>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Detalhe">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Detalhe" onClick={() => handleOpenDetail(task)}>
                                     <Eye className="h-3 w-3" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar Retorno" onClick={() => setCreateReturnIdx(task._idx)}>
@@ -705,6 +763,85 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Trip detail modal — master-detail */}
+      <Dialog open={!!detailData} onOpenChange={(open) => !open && setDetailData(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhe da Viagem</DialogTitle>
+          </DialogHeader>
+          {detailLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : detailData ? (
+            <div className="space-y-4">
+              {/* Master — trip info */}
+              <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                {[
+                  ["Código da Linha", detailData.lineCode],
+                  ["DT", detailData.dt || detailData.dailyTripCode],
+                  ["STO / Demanda", detailData.demand || detailData.sto],
+                  ["Origem", detailData.locOrig || detailData.locationOrigCode],
+                  ["Destino", detailData.locDest || detailData.locationDestCode],
+                  ["Veículo", detailData.fleetCode || detailData.vehicleCode],
+                  ["Início Planejado", formatDT(detailData.startPlanned as string)],
+                  ["Fim Planejado", formatDT(detailData.endPlanned as string)],
+                  ["Status", detailData.status],
+                  ["Início Real", formatDT(detailData.startActual as string)],
+                  ["Fim Real", formatDT(detailData.endActual as string)],
+                ].map(([label, val]) => (
+                  <div key={label as string}>
+                    <span className="text-xs text-muted-foreground">{label as string}</span>
+                    <p className="font-medium">{(val as string) || "--"}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Detail — sections */}
+              {(() => {
+                const sections = (detailData.sectionsReturn || detailData.sectionReturn || detailData.sections || []) as Record<string, unknown>[];
+                if (!sections.length) return null;
+                return (
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Seções</h4>
+                    <div className="border rounded-md overflow-auto max-h-[30vh]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30">
+                            <TableHead className="h-7 text-xs px-2">Seq</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Origem</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Destino</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Iní. Plan.</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Fim Plan.</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Iní. Real</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Fim Real</TableHead>
+                            <TableHead className="h-7 text-xs px-2">Distância</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sections.map((sec, i) => (
+                            <TableRow key={i} className={i % 2 === 0 ? "" : "bg-accent/20"}>
+                              <TableCell className="h-7 text-xs px-2 py-0.5">{(sec.seq as number) ?? i + 1}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{(sec.locOrig || sec.locationOrigCode || "--") as string}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{(sec.locDest || sec.locationDestCode || "--") as string}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{formatDT(sec.startPlanned as string)}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{formatDT(sec.endPlanned as string)}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{formatDT(sec.startActual as string)}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5 whitespace-nowrap">{formatDT(sec.endActual as string)}</TableCell>
+                              <TableCell className="h-7 text-xs px-2 py-0.5">{(sec.distance || sec.km || "--") as string}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

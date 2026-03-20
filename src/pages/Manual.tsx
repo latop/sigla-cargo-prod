@@ -183,9 +183,17 @@ const manualData: ManualGroup[] = [
         objective: "Registrar e gerenciar solicitações de motoristas para viagens específicas.",
       },
       {
-        name: "Escala de Motoristas",
+        name: "Circuitos de Motoristas",
         route: "/drivers-schedule",
-        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
+        objective: "Gestão de circuitos de motoristas com Gráfico de Gantt interativo e painel de edição de circuitos.",
+        filters: "Data Início, Data Fim, Grupo de Localidade, Motorista",
+        extra:
+          "• Gráfico de Gantt com visualização de circuitos por motorista e período.\n" +
+          "• Painel de edição flutuante com cabeçalho (Código, Status, datas planejadas e reais) e tabela de tarefas (viagens e atividades).\n" +
+          "• Adição de viagens (com busca por DT e retorno automático) e atividades (com busca por tipo de atividade).\n" +
+          "• Modal de detalhe da viagem em layout master-detail: metadados no topo e tabela de seções (trechos) na parte inferior.\n" +
+          "• Filtros secundários em resultados: por STO/DT ou Código/Tipo de Atividade.\n" +
+          "• Painel de viagens sem motorista com filtros internos, ordenação e paginação.",
       },
       {
         name: "Publicação de Jornada",

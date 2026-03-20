@@ -18,6 +18,8 @@ interface DatePickerFieldProps {
   includeTime?: boolean;
   /** Additional class for the trigger button */
   className?: string;
+  /** Additional class for the inner input element */
+  inputClassName?: string;
   /** Placeholder text */
   placeholder?: string;
   /** Error styling */
@@ -83,6 +85,7 @@ export function DatePickerField({
   onChange,
   includeTime = false,
   className,
+  inputClassName,
   placeholder,
   hasError = false,
   disabled = false,
@@ -184,6 +187,7 @@ export function DatePickerField({
           onBlur={handleDateTextBlur}
           className={cn(
             "h-8 text-xs pl-2 pr-7",
+            inputClassName,
             hasError && "border-destructive"
           )}
           maxLength={maxLen}
@@ -229,6 +233,7 @@ export function DatePickerField({
         onBlur={handleDateTextBlur}
         className={cn(
           "h-8 w-full text-xs pl-2 pr-7",
+          inputClassName,
           hasError && "border-destructive"
         )}
         maxLength={10}

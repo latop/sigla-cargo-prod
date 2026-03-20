@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Search, Loader2, X, ArrowUp, ArrowDown, ArrowUpDown, Plus, MoreVertical,
+  Search, Loader2, X, ArrowUp, ArrowDown, ArrowUpDown, Plus, MoreVertical, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,18 +164,17 @@ export default function TripSchedulePage() {
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(100);
 
   // UI
-  const [activeTab, setActiveTab] = useState<"gantt" | "list">("gantt");
-  const [ganttExpanded, setGanttExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"gantt" | "list">("list");
+  
   const [sort, setSort] = useState<SortConfig>({ key: "", direction: null });
-  const scrollRef = useRef<HTMLDivElement>(null);
+  
 
   const handleStartDateChange = (val: string | null) => {
     if (!val) return;
@@ -196,12 +195,12 @@ export default function TripSchedulePage() {
     setFleetGroupCodes((prev) => prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]);
   };
 
-  const buildUrl = (page: number) => {
+  const buildUrl = (page: number, overridePageSize?: number) => {
     const params = new URLSearchParams();
     params.set("startDate", startDate.substring(0, 10));
     params.set("endDate", endDate.substring(0, 10));
     params.set("pageNumber", String(page));
-    params.set("pageSize", String(pageSize));
+    params.set("pageSize", String(overridePageSize ?? pageSize));
     if (locationGroupCode) params.set("locationGroupCode", locationGroupCode);
     if (demandFilter) params.set("demand", demandFilter);
     // Array params
@@ -211,26 +210,14 @@ export default function TripSchedulePage() {
   };
 
   const fetchPage = useCallback(
-    async (page: number, append: boolean) => {
-      if (append) setLoadingMore(true);
-      else setLoading(true);
-
+    async (page: number, overridePageSize?: number) => {
+      setLoading(true);
       try {
-        const res = await fetch(buildUrl(page));
+        const res = await fetch(buildUrl(page, overridePageSize));
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data: ApiResponse = await res.json();
-
-        if (append) {
-          setTrucks((prev) => {
-            const ids = new Set(prev.map((t) => t.truckId));
-            return [...prev, ...data.trucks.filter((t) => !ids.has(t.truckId))];
-          });
-          setTrips((prev) => [...prev, ...data.trips]);
-        } else {
-          setTrucks(data.trucks);
-          setTrips(data.trips);
-        }
-
+        setTrucks(data.trucks);
+        setTrips(data.trips);
         setCurrentPage(data.currentPage);
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
@@ -240,10 +227,9 @@ export default function TripSchedulePage() {
         toast({ title: "Erro", description: "Erro ao carregar dados da coordenação.", variant: "destructive" });
       } finally {
         setLoading(false);
-        setLoadingMore(false);
       }
     },
-    [startDate, endDate, fleetGroupCodes, locationGroupCode, licensePlates, demandFilter]
+    [startDate, endDate, fleetGroupCodes, locationGroupCode, licensePlates, demandFilter, pageSize]
   );
 
   const handleSearch = () => {
@@ -254,7 +240,7 @@ export default function TripSchedulePage() {
     setTrucks([]);
     setTrips([]);
     setCurrentPage(1);
-    fetchPage(1, false);
+    fetchPage(1);
   };
 
   const handleClear = () => {
@@ -271,18 +257,7 @@ export default function TripSchedulePage() {
     setSort({ key: "", direction: null });
   };
 
-  // Infinite scroll
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container || !searched) return;
-    const handleScroll = () => {
-      if (loadingMore || !hasNext) return;
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      if (scrollTop + clientHeight >= scrollHeight - 100) fetchPage(currentPage + 1, true);
-    };
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [searched, loadingMore, hasNext, currentPage, fetchPage]);
+  const GANTT_PAGE_SIZES = [100, 150, 200, 250, 300, 350, 400];
 
   // Sorting
   const handleSort = (key: string) => {
@@ -330,7 +305,7 @@ export default function TripSchedulePage() {
   const refreshData = () => {
     setTrucks([]);
     setTrips([]);
-    fetchPage(1, false);
+    fetchPage(1);
   };
 
   // Fleet group options for multi-select
@@ -368,15 +343,6 @@ export default function TripSchedulePage() {
           <DatePickerField value={endDate} onChange={handleEndDateChange} placeholder="dd/mm/aaaa" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Grupo de Frota</Label>
-          <MultiSelectDropdown
-            label="Grupo de Frota"
-            options={fleetGroupOptions}
-            selected={fleetGroupCodes}
-            onToggle={toggleFleetGroup}
-          />
-        </div>
-        <div className="space-y-1">
           <Label className="text-xs">Grupo de Localidade</Label>
           <Select value={locationGroupCode || "all"} onValueChange={(v) => setLocationGroupCode(v === "all" ? "" : v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
@@ -389,6 +355,15 @@ export default function TripSchedulePage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Grupo de Frota</Label>
+          <MultiSelectDropdown
+            label="Grupo de Frota"
+            options={fleetGroupOptions}
+            selected={fleetGroupCodes}
+            onToggle={toggleFleetGroup}
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Veículo</Label>
@@ -459,30 +434,53 @@ export default function TripSchedulePage() {
       {/* Results */}
       {searched && (
         <div
-          ref={scrollRef}
+
           className={cn(
             "bg-card rounded-xl border border-border overflow-hidden transition-all",
-            ganttExpanded && activeTab === "gantt" && "fixed inset-0 z-50 rounded-none",
             activeTab === "list" ? "max-h-[calc(100vh-280px)] overflow-y-auto" : ""
           )}
         >
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "gantt" | "list")} className="w-full">
             <div className="px-3 pt-2 flex items-center justify-between border-b border-border pb-2">
               <TabsList className="h-8">
-                <TabsTrigger value="gantt" className="text-xs h-7 px-3">Gantt</TabsTrigger>
                 <TabsTrigger value="list" className="text-xs h-7 px-3">Listagem</TabsTrigger>
+                <TabsTrigger value="gantt" className="text-xs h-7 px-3">Gantt</TabsTrigger>
               </TabsList>
               <span className="text-xs text-muted-foreground">{trips.length} viagens carregadas</span>
             </div>
 
             <TabsContent value="gantt" className="mt-0">
-              <div className={cn(ganttExpanded ? "h-[calc(100vh-50px)] overflow-y-auto" : "max-h-[calc(100vh-320px)] overflow-y-auto")}>
+              <div className="h-[calc(100vh-340px)] overflow-hidden">
                 <TripGanttChart
                   trucks={trucks}
                   trips={trips}
-                  expanded={ganttExpanded}
-                  onToggleExpand={() => setGanttExpanded((e) => !e)}
                   onTripDoubleClick={(trip) => setEditingTripId(trip.dailyTripId)}
+                  footer={
+                    <div className="flex items-center justify-between px-3 py-2 border-t border-border shrink-0">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{totalCount} registros</span>
+                        <span className="text-border">|</span>
+                        <span>Por página:</span>
+                        <Select value={String(pageSize)} onValueChange={(v) => { const ns = Number(v); setPageSize(ns); fetchPage(1, ns); }}>
+                          <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {GANTT_PAGE_SIZES.map((n) => (
+                              <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={currentPage <= 1} onClick={() => fetchPage(currentPage - 1)}>
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={currentPage >= totalPages} onClick={() => fetchPage(currentPage + 1)}>
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  }
                 />
               </div>
             </TabsContent>
@@ -525,15 +523,33 @@ export default function TripSchedulePage() {
                   </TableBody>
                 </Table>
               </div>
+              {/* List Pagination */}
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{totalCount} registros</span>
+                  <span className="text-border">|</span>
+                  <span>Por página:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => { const ns = Number(v); setPageSize(ns); fetchPage(1, ns); }}>
+                    <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {GANTT_PAGE_SIZES.map((n) => (
+                        <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                  <Button variant="outline" size="icon" className="h-7 w-7" disabled={currentPage <= 1} onClick={() => fetchPage(currentPage - 1)}>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-7 w-7" disabled={currentPage >= totalPages} onClick={() => fetchPage(currentPage + 1)}>
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
-
-          {loadingMore && (
-            <div className="flex justify-center py-3 border-t border-border">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-xs text-muted-foreground">Carregando mais...</span>
-            </div>
-          )}
         </div>
       )}
 

@@ -49,9 +49,8 @@ export interface TruckRow {
 interface TripGanttChartProps {
   trucks: TruckRow[];
   trips: TripRow[];
-  expanded?: boolean;
-  onToggleExpand?: () => void;
   onTripDoubleClick?: (trip: TripRow) => void;
+  footer?: React.ReactNode;
 }
 
 type ZoomLevel = "12h" | "1d" | "2d" | "3d" | "7d" | "15d";
@@ -66,6 +65,7 @@ const ZOOM_OPTIONS: { key: ZoomLevel; label: string; hours: number }[] = [
 ];
 
 const ROW_HEIGHT = 40;
+const VEHICLE_COL_WIDTH = 160;
 
 const dateToAbsMin = (iso: string): number => Math.floor(new Date(iso).getTime() / 60000);
 
@@ -77,18 +77,25 @@ const formatDateShort = (iso: string): string => {
 const TripGanttChart: React.FC<TripGanttChartProps> = ({
   trucks,
   trips,
-  expanded,
-  onToggleExpand,
   onTripDoubleClick,
+  footer,
 }) => {
   const [zoom, setZoom] = useState<ZoomLevel>("1d");
   const [now, setNow] = useState(new Date());
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Lock body scroll when expanded
+  useEffect(() => {
+    if (expanded) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [expanded]);
 
   const refStartMin = useMemo(() => {
     if (trips.length === 0) return Math.floor(new Date().setHours(0, 0, 0, 0) / 60000);
@@ -133,7 +140,6 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
     return labels;
   }, [windowStart, windowEnd, zoomConfig.hours]);
 
-  // Group trips by truck via licensePlate
   const truckTripsMap = useMemo(() => {
     const map = new Map<string, TripRow[]>();
     for (const trip of trips) {
@@ -225,7 +231,6 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
     const demandLabel = trip.demand || "";
     const stopLabel = trip.stopType || trip.demand || "";
 
-    // Calculate planned bar bounds for tooltip anchor
     const plannedStart = trip.startPlanned ? dateToAbsMin(trip.startPlanned) : null;
     const plannedEnd = trip.endPlanned ? dateToAbsMin(trip.endPlanned) : null;
     const actualStart = (trip.startActual || trip.startEstimated) ? dateToAbsMin((trip.startActual || trip.startEstimated)!) : null;
@@ -233,7 +238,6 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
     const stopStart = trip.startStop ? dateToAbsMin(trip.startStop) : null;
     const stopEnd = trip.endStop ? dateToAbsMin(trip.endStop) : null;
 
-    // Find the overall left/right extent for the tooltip wrapper
     const allStarts = [plannedStart, actualStart, stopStart].filter((v): v is number => v !== null);
     const allEnds = [plannedEnd, actualEnd, stopEnd].filter((v): v is number => v !== null);
     if (allStarts.length === 0) return null;
@@ -294,11 +298,11 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
     );
   };
 
-  return (
+  const content = (
     <TooltipProvider delayDuration={200}>
-      <div ref={containerRef}>
-        {/* Zoom controls */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20 flex-wrap">
+      <div className="flex flex-col h-full">
+        {/* Zoom controls - sticky */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20 flex-wrap shrink-0 z-20">
           <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mr-1">Zoom:</span>
           {ZOOM_OPTIONS.map((opt) => (
             <Button key={opt.key} size="sm" variant={zoom === opt.key ? "default" : "outline"} className="h-6 text-[10px] px-2" onClick={() => setZoom(opt.key)}>
@@ -318,20 +322,27 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
             <span className="text-[9px] text-muted-foreground">
               {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </span>
-            {onToggleExpand && (
-              <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={onToggleExpand} title={expanded ? "Recolher" : "Expandir"}>
-                {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 w-6 p-0"
+              onClick={() => setExpanded((e) => !e)}
+              title={expanded ? "Reduzir" : "Expandir"}
+            >
+              {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+            </Button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Scrollable area with sticky header */}
+        <div className="overflow-auto flex-1 min-h-0">
           <div className="min-w-[900px]">
-            {/* Header */}
-            <div className="flex border-b border-border bg-muted/30">
-              <div className="w-[160px] shrink-0 px-3 py-2 text-xs font-semibold text-foreground">Veículo</div>
-              <div className="flex-1 flex">
+            {/* Sticky column header + time header */}
+            <div className="flex border-b border-border bg-muted/30 sticky top-0 z-10">
+              <div className="shrink-0 px-3 py-2 text-xs font-semibold text-foreground bg-muted/30" style={{ width: VEHICLE_COL_WIDTH }}>
+                Veículo
+              </div>
+              <div className="flex-1 flex bg-muted/30">
                 {hourLabels.map((lbl, i) => (
                   <div key={i} className="flex-1 text-center text-[10px] font-medium text-muted-foreground border-l border-border/50 py-2">
                     {lbl.dateLabel && <div className="text-[8px] font-bold text-foreground/70">{lbl.dateLabel}</div>}
@@ -346,7 +357,7 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
               const truckTrips = truckTripsMap.get(truck.truckId) || [];
               return (
                 <div key={truck.truckId} className={cn("flex border-b border-border/50 transition-colors", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
-                  <div className="w-[160px] shrink-0 px-3 py-2.5 flex flex-col justify-center">
+                  <div className="shrink-0 px-3 py-2.5 flex flex-col justify-center" style={{ width: VEHICLE_COL_WIDTH }}>
                     <span className="text-xs font-semibold text-foreground font-mono">
                       {truck.licensePlate} <span className="text-muted-foreground font-normal">{truck.fleetCode}</span>
                     </span>
@@ -376,9 +387,20 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
             )}
           </div>
         </div>
+        {footer}
       </div>
     </TooltipProvider>
   );
+
+  if (expanded) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 };
 
 export default TripGanttChart;

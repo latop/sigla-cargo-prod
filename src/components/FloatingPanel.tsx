@@ -10,9 +10,10 @@ interface FloatingPanelProps {
   children: ReactNode;
   onClose: () => void;
   width?: number;
+  maxHeight?: string;
 }
 
-export function FloatingPanel({ title, children, onClose, width = 480 }: FloatingPanelProps) {
+export function FloatingPanel({ title, children, onClose, width = 480, maxHeight = "85vh" }: FloatingPanelProps) {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
   const { state } = useSidebar();
@@ -66,7 +67,7 @@ export function FloatingPanel({ title, children, onClose, width = 480 }: Floatin
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="max-h-[92vh] overflow-y-auto">
+            <CardContent className="overflow-y-auto" style={{ maxHeight }}>
               {children}
             </CardContent>
           </Card>
