@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@/assets/logo-sigla-cargo.png";
+import { useLocalizedLogos } from "@/hooks/use-localized-logos";
 import clientLogo from "@/assets/client-logo.png";
 
 const languages = [
@@ -24,6 +24,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { user, loading, login } = useAuth();
   const { toast } = useToast();
+  const { siglaLogo, latopLogo } = useLocalizedLogos();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -78,7 +79,7 @@ const Login = () => {
           transition={{ duration: 0.6 }}
           className="relative z-10 text-center px-12"
         >
-          <img src={clientLogo} alt="Client Logo" className="w-72 mx-auto drop-shadow-2xl" />
+          <img src={clientLogo} alt="PepsiCo" className="w-72 mx-auto drop-shadow-2xl" />
         </motion.div>
       </div>
 
@@ -110,10 +111,12 @@ const Login = () => {
 
           {/* Logo for mobile */}
           <div className="lg:hidden mb-8 flex justify-center">
-            <img src={clientLogo} alt="Client Logo" className="w-48" />
+            <img src={clientLogo} alt="PepsiCo" className="w-48" />
           </div>
 
-          <div className="mb-8 text-center">
+          {/* Product logo + welcome */}
+          <div className="mb-8 text-center space-y-4">
+            <img src={siglaLogo} alt="SIGLA Cargo" className="h-10 object-contain mx-auto" />
             <h1 className="text-2xl font-display font-bold text-foreground">
               {t("login.title")}
             </h1>
@@ -183,7 +186,7 @@ const Login = () => {
           {/* Powered by */}
           <div className="mt-10 flex flex-col items-center gap-1">
             <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Powered by</span>
-            <img src={logo} alt="SIGLA Cargo" className="h-7 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+            <img src={latopLogo} alt="LATOP" className="h-7 object-contain opacity-80 hover:opacity-100 transition-opacity" />
           </div>
         </motion.div>
       </div>

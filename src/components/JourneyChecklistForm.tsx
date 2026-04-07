@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, ChevronDown, ClipboardCopy, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ const fetchJustifications = async (): Promise<JustificationOption[]> => {
 };
 
 export function JourneyChecklistForm({ item, onClose, onSaved }: JourneyChecklistFormProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [extraOpen, setExtraOpen] = useState(true);
@@ -265,11 +267,12 @@ export function JourneyChecklistForm({ item, onClose, onSaved }: JourneyChecklis
                     setMotoristaLiberadoLabel(nick);
                   }}
                   placeholder="Motorista"
-                  className="h-8 text-xs"
-                  nullable
+                   className="h-8 text-xs"
+                   nullable
+                   forceActiveOnly
                   displayAsText
                    modalVisibleColumns={["nickName", "integrationCode", "registration"]}
-                   columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração", registration: "CPF" }}
+                   columnLabels={{ nickName: t("driver.nickName"), integrationCode: t("driver.integrationCode"), registration: t("driver.registration") }}
                   transformItem={(item) => ({
                     ...item,
                     id: item.id as string,

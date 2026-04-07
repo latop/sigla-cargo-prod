@@ -1,6 +1,17 @@
 import { API_BASE } from "@/config/api";
-import clientLogo from "@/assets/client-logo.png";
-import siglaLogo from "@/assets/logo-sigla-cargo.png";
+import i18n from "@/i18n";
+import siglaCargoPt from "@/assets/sigla-cargo-pt.png";
+import siglaCargoEn from "@/assets/sigla-cargo-en.png";
+import latopPt from "@/assets/latop-pt.png";
+import latopEn from "@/assets/latop-en.png";
+
+function getLocalizedLogos() {
+  const isPt = i18n.language === "pt";
+  return {
+    clientLogo: isPt ? siglaCargoPt : siglaCargoEn,
+    siglaLogo: isPt ? latopPt : latopEn,
+  };
+}
 
 type Rec = Record<string, unknown>;
 
@@ -62,9 +73,10 @@ export async function exportToPdf(
   const rows = buildRows(data, columns);
   const now = new Date().toLocaleString("pt-BR");
 
+  const logos = getLocalizedLogos();
   const [clientLogoB64, siglaLogoB64] = await Promise.all([
-    loadImageBase64(clientLogo),
-    loadImageBase64(siglaLogo),
+    loadImageBase64(logos.clientLogo),
+    loadImageBase64(logos.siglaLogo),
   ]);
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });

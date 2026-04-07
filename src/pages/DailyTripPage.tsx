@@ -768,7 +768,7 @@ const DailyTripPage = () => {
             {/* Linha 1: Data da Viagem - DT - STO - Status - Transportadora - [Obs + Just buttons] */}
             <div className="grid grid-cols-6 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Data da Viagem *</Label>
+                <Label className="text-xs">Data da Viagem <span className="text-destructive">*</span></Label>
                 <DatePickerField
                   value={formData.tripDate}
                   onChange={(v) => updateForm("tripDate", v)}
@@ -922,7 +922,7 @@ const DailyTripPage = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Grupo Localidade</Label>
+                <Label className="text-xs">Grupo de Localidade</Label>
                 <Select value={formData.locationGroupId || ""} onValueChange={(v) => updateForm("locationGroupId", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent>
@@ -1226,7 +1226,7 @@ const DailyTripPage = () => {
       {/* Filters */}
       <div className="grid grid-cols-5 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">Data Início *</Label>
+          <Label className="text-xs">Data Início <span className="text-destructive">*</span></Label>
           <DatePickerField
             value={filters.startTripDate ? `${filters.startTripDate}T00:00:00` : null}
             onChange={(v) => {
@@ -1305,12 +1305,27 @@ const DailyTripPage = () => {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Veículo</Label>
-          <Input
+          <LookupSearchField
+            endpoint="Truck"
+            searchFilterParam="Filter1String"
             value={filters.licensePlate}
-            onChange={(e) => setFilters((p) => ({ ...p, licensePlate: e.target.value.toUpperCase() }))}
-            onKeyDown={handleKeyDown}
-            placeholder="Placa / Frota..."
+            onChange={(id, item) => {
+              const plate = item?.licensePlate as string || item?.fleetCode as string || "";
+              setFilters((p) => ({ ...p, licensePlate: plate }));
+            }}
+            placeholder="Placa ou Cód. Frota..."
             className="h-8 text-xs"
+            nullable
+            displayAsText
+            modalVisibleColumns={["licensePlate", "fleetCode"]}
+            columnLabels={{ licensePlate: "Placa", fleetCode: "Cód. Frota" }}
+            transformItem={(item) => ({
+              ...item,
+              id: item.id as string,
+              code: "",
+              name: `${item.licensePlate || ""} - ${item.fleetCode || ""}`,
+            })}
+            initialLabel={filters.licensePlate}
           />
         </div>
         <div className="space-y-1">

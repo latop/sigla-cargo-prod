@@ -118,7 +118,7 @@ export function NewTripDialog({ open, onOpenChange, onTripGenerated }: NewTripDi
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label className="text-xs">Linha</Label>
+              <Label className="text-xs">Linha <span className="text-destructive">*</span></Label>
               <div className="flex gap-1">
                 <Input
                   readOnly
@@ -144,7 +144,7 @@ export function NewTripDialog({ open, onOpenChange, onTripGenerated }: NewTripDi
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Início Previsto</Label>
+                <Label className="text-xs">Início Previsto <span className="text-destructive">*</span></Label>
                 <DatePickerField
                   value={startPlanned ? `${startPlanned}:00` : null}
                   onChange={(v) => setStartPlanned(v ? v.substring(0, 16) : "")}

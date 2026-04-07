@@ -444,7 +444,7 @@ const JourneyReleasePage = () => {
               nullable
               displayAsText
               modalVisibleColumns={["nickName", "integrationCode", "registration"]}
-              columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração", registration: "CPF" }}
+              columnLabels={{ nickName: t("driver.nickName"), integrationCode: t("driver.integrationCode"), registration: t("driver.registration") }}
               transformItem={(item) => ({
                 ...item,
                 id: item.id as string,

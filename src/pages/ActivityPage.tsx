@@ -360,7 +360,7 @@ const ActivityPage = () => {
             {/* Row 1: Code + Activity Type */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">{t("common.code")} *</Label>
+                <Label className="text-xs">{t("common.code")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={formData.code || ""}
                   onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
@@ -370,7 +370,7 @@ const ActivityPage = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t("menu.activityType")} *</Label>
+                <Label className="text-xs">{t("menu.activityType")} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.activityTypeId ? String(formData.activityTypeId) : ""}
                   onValueChange={(v) => setFormData((p) => ({ ...p, activityTypeId: v }))}
@@ -391,7 +391,7 @@ const ActivityPage = () => {
 
             {/* Row 2: Description */}
             <div className="space-y-1">
-              <Label className="text-xs">{t("common.description")} *</Label>
+              <Label className="text-xs">{t("common.description")} <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.description || ""}
                 onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value.toUpperCase() }))}
@@ -404,7 +404,7 @@ const ActivityPage = () => {
             {/* Row 3: Start, End, Max Minutes, Block Before, Block After */}
             <div className="grid grid-cols-5 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">{t("activity.start", "Início")} *</Label>
+                <Label className="text-xs">{t("activity.start", "Início")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="time"
                   value={formData.start ? formData.start.substring(11, 16) : "08:00"}
@@ -413,7 +413,7 @@ const ActivityPage = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t("activity.end", "Fim")} *</Label>
+                <Label className="text-xs">{t("activity.end", "Fim")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="time"
                   value={formData.end ? formData.end.substring(11, 16) : "17:00"}

@@ -397,14 +397,14 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
                 }}
                 placeholder="Buscar por nome de escala..."
                 initialLabel={formData.nickName || ""}
-                extraParams={{ IsActive: "1" }}
+                forceActiveOnly
                 transformItem={(item) => ({
                   ...item,
                   code: (item.nickName as string) || "",
                   name: "",
                 })}
-                modalVisibleColumns={["nickName", "integrationCode", "isActive"]}
-                columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração", isActive: "Ativo" }}
+                modalVisibleColumns={["nickName", "integrationCode", "registration"]}
+                columnLabels={{ nickName: t("driver.nickName"), integrationCode: t("driver.integrationCode"), registration: t("driver.registration") }}
                 className="h-7 text-[11px]"
               />
             </div>
@@ -430,14 +430,14 @@ export function CircuitEditPanel({ circuitId, onClose, onSaved }: CircuitEditPan
                 }}
                 placeholder="Buscar por cód. integração..."
                 initialLabel={formData.integrationCode || ""}
-                extraParams={{ IsActive: "1" }}
+                forceActiveOnly
                 transformItem={(item) => ({
                   ...item,
                   code: (item.integrationCode as string) || "",
                   name: "",
                 })}
-                modalVisibleColumns={["integrationCode", "nickName", "isActive"]}
-                columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração", isActive: "Ativo" }}
+                modalVisibleColumns={["integrationCode", "nickName", "registration"]}
+                columnLabels={{ nickName: t("driver.nickName"), integrationCode: t("driver.integrationCode"), registration: t("driver.registration") }}
                 className="h-7 text-[11px]"
               />
             </div>

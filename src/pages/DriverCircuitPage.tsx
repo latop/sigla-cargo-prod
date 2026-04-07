@@ -503,7 +503,7 @@ export default function DriverCircuitPage() {
           <DatePickerField value={endDate} onChange={(v) => v && setEndDate(v)} placeholder="dd/mm/aaaa" />
         </div>
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Grupo Localidade</Label>
+          <Label className="text-xs">Grupo de Localidade</Label>
           <Select value={locationGroupCode || "all"} onValueChange={(v) => setLocationGroupCode(v === "all" ? "" : v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
             <SelectContent>
@@ -536,14 +536,14 @@ export default function DriverCircuitPage() {
             multiSelect
             selectedValues={driverIds}
             onMultiSelectConfirm={handleDriverMultiSelect}
-            extraParams={showInactive ? undefined : { IsActive: "1" }}
+            extraParams={showInactive ? { IsActive: "0" } : { IsActive: "1" }}
             transformItem={(item) => ({
               ...item,
               code: (item.nickName as string) || "",
               name: (item.integrationCode as string) || "",
             })}
-            modalVisibleColumns={["nickName", "integrationCode"]}
-            columnLabels={{ nickName: "Nome de Escala", integrationCode: "Cód. Integração" }}
+            modalVisibleColumns={["nickName", "integrationCode", "registration"]}
+            columnLabels={{ nickName: t("driver.nickName"), integrationCode: t("driver.integrationCode"), registration: t("driver.registration") }}
           />
         </div>
         <div className="col-span-2 space-y-1">

@@ -10,8 +10,10 @@ import {
   ClipboardList, Tag, Zap, GitBranch, Building2, MapPin, Globe2,
   User, Car, FolderTree, Boxes, CircleDot,
   Scale, Milestone, Map, Waypoints, FileBarChart,
-  Landmark, Flag, Clock, Timer, Navigation, Container,
-  ChevronDown, BookOpen, Info, ChevronsUpDown, ChevronsDownUp, LayoutDashboard,
+  Landmark, Flag, Clock, Timer, Navigation, Container, Shield,
+  ChevronDown, BookOpen, Info, ChevronsUpDown, ChevronsDownUp, LayoutDashboard, GraduationCap,
+  FileText, Wrench, ArrowLeftRight, Radio, ScrollText, BarChart3,
+  ShieldAlert, Target,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -33,7 +35,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import logo from "@/assets/logo-sigla-cargo.png";
+import { useLocalizedLogos } from "@/hooks/use-localized-logos";
 import clientLogo from "@/assets/client-logo.png";
 import { APP_VERSION } from "@/pages/Changelog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,7 +63,17 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { titleKey: "menu.dailyTrip", url: "/daily-trip", icon: CalendarDays },
       { titleKey: "menu.dailyTripsSchedule", url: "/daily-trips-schedule", icon: Route },
-      
+    ],
+  },
+  {
+    labelKey: "sidebar.maintenance",
+    items: [
+      { titleKey: "menu.vehicleMaintenance", url: "/vehicle-maintenance", icon: Wrench },
+      { titleKey: "menu.mileageHourmeter", url: "/mileage-hourmeter", icon: Cpu },
+      { titleKey: "menu.preventiveMaintenance", url: "/preventive-maintenance", icon: CalendarDays },
+      { titleKey: "menu.correctiveMaintenance", url: "/corrective-maintenance", icon: Wrench },
+      { titleKey: "menu.downtimeRecord", url: "/downtime-record", icon: Timer },
+      { titleKey: "menu.reserveFleet", url: "/reserve-fleet", icon: Shield },
     ],
   },
   {
@@ -69,6 +81,8 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { titleKey: "menu.departuresAndArrivals", url: "/departures-and-arrivals", icon: Truck },
       { titleKey: "menu.releaseDriver", url: "/release-driver", icon: UserMinus },
+      { titleKey: "menu.dailyVehicleAssignment", url: "/daily-vehicle-assignment", icon: Car },
+      { titleKey: "menu.driverAvailability", url: "/driver-availability", icon: Radio },
     ],
   },
   {
@@ -77,6 +91,14 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.driversRequest", url: "/drivers-request", icon: UserCheck },
       { titleKey: "menu.driversSchedule", url: "/drivers-schedule", icon: Users },
       { titleKey: "menu.publishJourney", url: "/publish-journey", icon: Megaphone },
+      { titleKey: "menu.driverVacation", url: "/driver-vacation", icon: CalendarDays },
+      { titleKey: "menu.trainingClass", url: "/training-class", icon: GraduationCap },
+      { titleKey: "menu.driverOccurrence", url: "/driver-occurrence", icon: ClipboardList },
+      { titleKey: "menu.medicalCertificate", url: "/medical-certificate", icon: ShieldAlert },
+      { titleKey: "menu.driverDocuments", url: "/driver-documents", icon: FileText },
+      { titleKey: "menu.overtimeBank", url: "/overtime-bank", icon: Clock },
+      { titleKey: "menu.shiftSwap", url: "/shift-swap", icon: ArrowLeftRight },
+      { titleKey: "menu.journeyRules", url: "/journey-rules", icon: Scale },
     ],
   },
   {
@@ -91,9 +113,10 @@ export const menuGroups: MenuGroup[] = [
       
       { titleKey: "menu.planningModel", url: "/planning-model", icon: LayoutTemplate },
       { titleKey: "menu.scenarios", url: "/scenarios", icon: Layers },
+      { titleKey: "menu.strategicPlanning", url: "/strategic-planning", icon: Target },
       { titleKey: "menu.tripOptimization", url: "/trip-optimization", icon: Cpu },
       { titleKey: "menu.vehiclePlanning", url: "/vehicle-planning", icon: Truck },
-      
+      { titleKey: "menu.smartAllocation", url: "/smart-allocation", icon: Cpu },
     ],
   },
   {
@@ -104,6 +127,7 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.activity", url: "/activity", icon: ClipboardList },
       { titleKey: "menu.attribution", url: "/attribution", icon: GitBranch },
       { titleKey: "menu.city", url: "/city", icon: Building2 },
+      { titleKey: "menu.course", url: "/course", icon: GraduationCap },
       { titleKey: "menu.company", url: "/company", icon: Landmark },
       { titleKey: "menu.country", url: "/country", icon: Globe2 },
       { titleKey: "menu.driver", url: "/driver", icon: User },
@@ -112,10 +136,12 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.fleetModel", url: "/fleet-model", icon: Boxes },
       { titleKey: "menu.fleetType", url: "/fleet-type", icon: CircleDot },
       { titleKey: "menu.justification", url: "/justification", icon: Scale },
+      { titleKey: "menu.license", url: "/license", icon: Shield },
       { titleKey: "menu.line", url: "/line", icon: Milestone },
       { titleKey: "menu.locationGroup", url: "/location-group", icon: Map },
       { titleKey: "menu.locationType", url: "/location-type", icon: Waypoints },
       { titleKey: "menu.location", url: "/location", icon: MapPin },
+      { titleKey: "menu.locationFrequency", url: "/location-frequency", icon: Clock },
       { titleKey: "menu.position", url: "/position", icon: Navigation },
       { titleKey: "menu.regulationRule", url: "/regulation-rule", icon: Scale },
       { titleKey: "menu.region", url: "/region", icon: Flag },
@@ -126,6 +152,7 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.timezone", url: "/timezone", icon: Clock },
       { titleKey: "menu.tripType", url: "/trip-type", icon: Route },
       { titleKey: "menu.truck", url: "/truck", icon: Truck },
+      
     ],
   },
   {
@@ -134,9 +161,18 @@ export const menuGroups: MenuGroup[] = [
     directLink: { url: "/reports", icon: FileBarChart },
   },
   {
+    labelKey: "sidebar.analytics",
+    items: [
+      { titleKey: "menu.operationalKpis", url: "/operational-kpis", icon: BarChart3 },
+      { titleKey: "menu.analytics", url: "/analytics", icon: BarChart3 },
+    ],
+  },
+  {
     labelKey: "sidebar.admin",
     items: [
       { titleKey: "menu.adminParameters", url: "/admin-parameters", icon: Zap },
+      { titleKey: "menu.userManagement", url: "/user-management", icon: Users },
+      { titleKey: "menu.auditLog", url: "/audit-log", icon: ScrollText },
     ],
   },
 ];
@@ -160,6 +196,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { openTab, tabs, activeTabId, MAX_TABS } = useTabs();
   const { user } = useAuth();
+  const { siglaLogo, siglaLogoWhite, latopLogo } = useLocalizedLogos();
   const userName = user?.name || "Usuário";
   const userGpid = user?.gpid || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -212,9 +249,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div className="h-16 flex items-center justify-center px-4 border-b border-sidebar-border">
+      {/* Top bar - white/dark background for client logo */}
+      <div className="h-16 flex items-center justify-center px-4 border-b border-sidebar-border bg-background">
         {!collapsed && (
-          <img src={clientLogo} alt="Cliente" className="h-9 object-contain mx-auto" />
+          <img src={clientLogo} alt="PepsiCo" className="h-9 object-contain mx-auto" />
         )}
       </div>
       <SidebarContent className="pt-2">
@@ -348,19 +386,12 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Powered by SIGLA Cargo */}
-        <div className="flex flex-col items-center gap-1 pt-1">
-          {!collapsed ? (
-            <>
-              <span className="text-[9px] text-sidebar-foreground/40 uppercase tracking-widest">Powered by</span>
-              <img src={logo} alt="SIGLA Cargo" className="h-6 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-              <p className="text-[9px] text-sidebar-foreground/30 leading-tight mt-0.5">
-                LATOP Tecnologia da Informação Ltda
-              </p>
-            </>
-          ) : (
-            <img src={logo} alt="SIGLA Cargo" className="h-5 object-contain opacity-50 hover:opacity-100 transition-opacity" />
-          )}
+        {/* SIGLA Cargo logo - white/dark background strip */}
+        <div className="flex flex-col items-center pt-2 pb-1 -mx-3 -mb-3 px-3 bg-background border-t border-sidebar-border">
+          <img src={siglaLogoWhite} alt="SIGLA Cargo" className={cn(
+            "object-contain max-w-[140px]",
+            collapsed ? "h-5 max-w-[36px]" : "h-8"
+          )} />
         </div>
       </SidebarFooter>
     </Sidebar>

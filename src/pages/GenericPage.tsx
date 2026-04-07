@@ -35,6 +35,7 @@ import { FloatingPanel } from "@/components/FloatingPanel";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { API_BASE } from "@/config/api";
 import { entitySchemas, FieldSchema, FilterSchema, getLookupLabel } from "@/config/entitySchemas";
 import { LookupSearchField } from "@/components/LookupSearchField";
@@ -669,7 +670,7 @@ const GenericPage = () => {
       if (!f.required || f.displayOnly) return;
       const v = formData[f.key];
       if (f.type === "string" || f.type === "color" || f.type === "lookup" || f.type === "datetime" || f.type === "date" || f.type === "select") {
-        if (!v || !String(v).trim()) errors[f.key] = true;
+        if (v == null || !String(v).trim()) errors[f.key] = true;
       }
       if (f.type === "number" && (v === null || v === undefined || v === "")) errors[f.key] = true;
     });
@@ -912,7 +913,7 @@ const GenericPage = () => {
         const opts = field.options || [];
         return (
           <Select
-            value={formData[field.key] ? String(formData[field.key]) : ""}
+            value={formData[field.key] != null && formData[field.key] !== "" ? String(formData[field.key]) : ""}
             onValueChange={(v) => {
               const allNumeric = opts.every((o) => /^\d+$/.test(o.value));
               updateField(field.key, allNumeric ? Number(v) : v);
@@ -1099,7 +1100,17 @@ const GenericPage = () => {
       const opt = (field as FieldSchema).options!.find((o) => o.value === v);
       if (opt) {
         const label = opt.label;
-        return (label.includes(".")) ? t(label) : label;
+        const displayLabel = (label.includes(".")) ? t(label) : label;
+        const colorMap = (field as FieldSchema).badgeColorMap;
+        if (colorMap) {
+          const cls = colorMap[v] || "bg-muted text-muted-foreground border-border";
+          return (
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase", cls)}>
+              {displayLabel}
+            </span>
+          );
+        }
+        return displayLabel;
       }
     }
     const v = row[field.key];
@@ -1134,7 +1145,7 @@ const GenericPage = () => {
                   return (
                     <div key={f.key} className="space-y-1" style={{ gridColumn: `span ${f.formColSpan || (f.type === "color" ? 6 : span)}` }}>
                       <Label className="text-xs">
-                        {f.label.includes(".") ? t(f.label) : f.label} {f.required ? "*" : ""}
+                        {f.label.includes(".") ? t(f.label) : f.label} {f.required && <span className="text-destructive">*</span>}
                       </Label>
                       {renderField(f)}
                     </div>
@@ -1149,7 +1160,7 @@ const GenericPage = () => {
                     return (
                       <div key={f.key} className="space-y-1" style={{ gridColumn: `span ${f.type === "color" ? 4 : span}` }}>
                         <Label className="text-xs">
-                          {f.label} {f.required ? "*" : ""}
+                          {f.label} {f.required && <span className="text-destructive">*</span>}
                         </Label>
                         {renderField(f)}
                       </div>

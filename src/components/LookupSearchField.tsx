@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, X, Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/config/api";
 import { getLookupLabel } from "@/config/entitySchemas";
 import { cn } from "@/lib/utils";
+import { DriverSearchModal } from "@/components/DriverSearchModal";
+import { LocationSearchModal } from "@/components/LocationSearchModal";
 
 type Rec = Record<string, unknown>;
 
@@ -57,6 +62,10 @@ interface LookupSearchFieldProps {
   multiSelectValueKey?: string;
   /** Extra query parameters to append to every search request */
   extraParams?: Record<string, string>;
+  /** Show an "Active" toggle filter in the advanced search modal (for Drivers) */
+  showActiveFilter?: boolean;
+  /** Always force IsActive=1 without showing toggle (for forms that must only allow active drivers) */
+  forceActiveOnly?: boolean;
 }
 
 interface PaginationMeta {
@@ -124,7 +133,11 @@ export function LookupSearchField({
   onMultiSelectConfirm,
   multiSelectValueKey,
   extraParams,
+  showActiveFilter: showActiveFilterProp,
+  forceActiveOnly = false,
 }: LookupSearchFieldProps) {
+  const { t } = useTranslation();
+  const showActiveFilter = !forceActiveOnly && (showActiveFilterProp ?? (endpoint === "Drivers"));
   const [displayLabel, setDisplayLabel] = useState(initialLabel || "");
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<Rec[]>([]);
@@ -140,8 +153,46 @@ export function LookupSearchField({
   const containerRef = useRef<HTMLDivElement>(null);
   const lastFetchedId = useRef<string | undefined>(undefined);
 
+  // Active filter state for modal
+  const [modalActiveOnly, setModalActiveOnly] = useState(true);
+
   // Multi-select state
   const [multiSelections, setMultiSelections] = useState<Map<string, { label: string; item: Rec }>>(new Map());
+
+  // Driver advanced search modal (used instead of generic modal for Drivers)
+  const useDriverModal = endpoint === "Drivers" && !multiSelect;
+  const [driverModalOpen, setDriverModalOpen] = useState(false);
+
+  // Location advanced search modal
+  const useLocationModal = endpoint === "Location" && !multiSelect;
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+
+  const normalizeLookupItem = useCallback(
+    (rawItem: Rec): Rec => {
+      const transformed = transformItem ? transformItem(rawItem) : rawItem;
+      const truck = transformed.truck && typeof transformed.truck === "object" ? (transformed.truck as Rec) : {};
+      const driver = transformed.driver && typeof transformed.driver === "object" ? (transformed.driver as Rec) : {};
+      const code = transformed.code || transformed.licensePlate || truck.licensePlate || transformed.nickName || driver.nickName || transformed.name || "";
+      const name = transformed.name || transformed.fleetCode || truck.fleetCode || transformed.integrationCode || driver.integrationCode || transformed.description || "";
+      return {
+        ...transformed,
+        code,
+        name,
+      };
+    },
+    [transformItem],
+  );
+
+  const isDriverActive = useCallback((item: Rec): boolean => {
+    const nestedDriver = item.driver && typeof item.driver === "object" ? (item.driver as Rec) : {};
+    const raw = item.isActive ?? item.IsActive ?? item.flgActive ?? item.FlgActive ?? nestedDriver.isActive ?? nestedDriver.IsActive ?? nestedDriver.flgActive ?? nestedDriver.FlgActive;
+
+    if (typeof raw === "boolean") return raw;
+    if (typeof raw === "number") return raw === 1;
+
+    const normalized = String(raw ?? "").trim().toLowerCase();
+    return normalized === "1" || normalized === "true";
+  }, []);
 
   // Resolve display label when value changes externally
   useEffect(() => {
@@ -164,11 +215,11 @@ export function LookupSearchField({
     lastFetchedId.current = value;
     fetchById(endpoint, value).then((item) => {
       if (item) {
-        const resolved = transformItem ? transformItem(item) : item;
+        const resolved = normalizeLookupItem(item);
         setDisplayLabel(getLookupLabel(resolved, labelFn));
       } else setDisplayLabel("");
     });
-  }, [value, endpoint, labelFn, displayAsText, transformItem, initialLabel, multiSelect]);
+  }, [value, endpoint, labelFn, displayAsText, initialLabel, multiSelect, normalizeLookupItem]);
 
   // Autocomplete search
   const doAutocomplete = useCallback(
@@ -181,20 +232,16 @@ export function LookupSearchField({
       setLoading(true);
       fetchSearch(endpoint, searchFilterParam, query, 10, 1, extraParams)
         .then(({ items }) => {
-          const transformed = transformItem ? items.map(transformItem) : items;
+          const transformed = items.map(normalizeLookupItem);
           // Sort alphabetically by label
-          transformed.sort((a, b) => {
-            const la = (a.code || a.name || a.description || "").toString().toLowerCase();
-            const lb = (b.code || b.name || b.description || "").toString().toLowerCase();
-            return la.localeCompare(lb);
-          });
+          transformed.sort((a, b) => getLookupLabel(a, labelFn).toLowerCase().localeCompare(getLookupLabel(b, labelFn).toLowerCase()));
           setSuggestions(transformed);
           setShowSuggestions(true);
         })
         .catch(() => setSuggestions([]))
         .finally(() => setLoading(false));
     },
-    [endpoint, searchFilterParam, transformItem],
+    [endpoint, searchFilterParam, extraParams, normalizeLookupItem, labelFn],
   );
 
   const handleInputChange = (text: string) => {
@@ -205,8 +252,9 @@ export function LookupSearchField({
   };
 
   const selectItem = (item: Rec) => {
-    onChange(String(item.id), item);
-    setDisplayLabel(getLookupLabel(item, labelFn));
+    const normalized = normalizeLookupItem(item);
+    onChange(String(normalized.id), normalized);
+    setDisplayLabel(getLookupLabel(normalized, labelFn));
     setInputValue("");
     setShowSuggestions(false);
     setSuggestions([]);
@@ -237,13 +285,26 @@ export function LookupSearchField({
     async (page = 1) => {
       setModalLoading(true);
       try {
-        const { items, pagination } = await fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page, extraParams);
-        const transformed = transformItem ? items.map(transformItem) : items;
-        transformed.sort((a, b) => {
-          const la = (a.code || a.name || a.description || "").toString().toLowerCase();
-          const lb = (b.code || b.name || b.description || "").toString().toLowerCase();
-          return la.localeCompare(lb);
-        });
+        // Merge active filter into extra params for modal search
+        const mergedParams = { ...extraParams };
+        if (endpoint === "Drivers") {
+          if (forceActiveOnly) {
+            mergedParams.IsActive = "1";
+          } else if (showActiveFilter) {
+            // Toggle ON => only active, OFF => only inactive
+            mergedParams.IsActive = modalActiveOnly ? "1" : "0";
+          }
+        }
+
+        const { items, pagination } = await fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page, mergedParams);
+        let transformed = items.map(normalizeLookupItem);
+
+        // Client-side safety: enforce active/inactive filter even if backend ignores IsActive
+        if (endpoint === "Drivers" && (mergedParams.IsActive === "1" || mergedParams.IsActive === "0")) {
+          const shouldBeActive = mergedParams.IsActive === "1";
+          transformed = transformed.filter((item) => isDriverActive(item) === shouldBeActive);
+        }
+        transformed.sort((a, b) => getLookupLabel(a, labelFn).toLowerCase().localeCompare(getLookupLabel(b, labelFn).toLowerCase()));
         setModalItems(transformed);
         setModalPagination(pagination);
         setModalPage(page);
@@ -253,15 +314,24 @@ export function LookupSearchField({
         setModalLoading(false);
       }
     },
-    [endpoint, searchFilterParam, modalSearch],
+    [endpoint, searchFilterParam, modalSearch, extraParams, showActiveFilter, modalActiveOnly, forceActiveOnly, normalizeLookupItem, isDriverActive, labelFn],
   );
 
   const openModal = () => {
+    if (useDriverModal) {
+      setDriverModalOpen(true);
+      return;
+    }
+    if (useLocationModal) {
+      setLocationModalOpen(true);
+      return;
+    }
     setModalOpen(true);
     setModalSearch("");
     setModalItems([]);
     setModalPagination(null);
     setModalPage(1);
+    setModalActiveOnly(true);
     // Initialize multi-selections from selectedValues
     if (multiSelect) {
       const initial = new Map<string, { label: string; item: Rec }>();
@@ -279,7 +349,7 @@ export function LookupSearchField({
 
   const getItemLabel = (item: Rec): string => {
     if (multiSelectValueKey) return String(item[multiSelectValueKey] || "");
-    return getLookupLabel(item, labelFn);
+    return getLookupLabel(normalizeLookupItem(item), labelFn);
   };
 
   const toggleMultiItem = (item: Rec) => {
@@ -326,6 +396,21 @@ export function LookupSearchField({
   };
 
   const modalColumns = getModalColumns(modalItems);
+  const showStatusColumn = endpoint === "Drivers";
+
+  const renderStatusCell = (item: Rec) => {
+    const isActive = isDriverActive(item);
+    return (
+      <Badge variant="outline" className={cn(
+        "text-[10px] font-medium uppercase",
+        isActive
+          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+          : "bg-muted text-muted-foreground border-border"
+      )}>
+        {isActive ? t("common.active") : t("common.inactive")}
+      </Badge>
+    );
+  };
 
   // For multi-select mode, render differently
   if (multiSelect) {
@@ -364,6 +449,12 @@ export function LookupSearchField({
                 placeholder="Digite para pesquisar..."
                 className="h-8 text-xs flex-1"
               />
+              {showActiveFilter && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Switch id="modal-active-multi" checked={modalActiveOnly} onCheckedChange={setModalActiveOnly} className="h-4 w-7 [&>span]:h-3 [&>span]:w-3" />
+                  <Label htmlFor="modal-active-multi" className="text-xs cursor-pointer whitespace-nowrap">{t("common.active")}</Label>
+                </div>
+              )}
               <Button size="sm" className="h-8 text-xs gap-1" onClick={() => doModalSearch(1)} disabled={modalLoading}>
                 {modalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                 Pesquisar
@@ -394,18 +485,21 @@ export function LookupSearchField({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="h-7 text-xs px-2 w-8"></TableHead>
-                    {modalColumns.map((col) => (
-                      <TableHead key={col} className="h-7 text-xs px-2">
-                        {getColumnLabel(col)}
-                      </TableHead>
-                    ))}
+                     {modalColumns.map((col) => (
+                       <TableHead key={col} className="h-7 text-xs px-2">
+                         {getColumnLabel(col)}
+                       </TableHead>
+                     ))}
+                     {showStatusColumn && (
+                        <TableHead className="h-7 text-xs px-2 w-[80px]">{t("common.status")}</TableHead>
+                     )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {modalItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={(modalColumns.length || 1) + 1} className="text-center text-xs text-muted-foreground py-8">
-                        {modalLoading ? "Carregando..." : "Utilize o campo acima para pesquisar."}
+                       <TableCell colSpan={(modalColumns.length || 1) + 1 + (showStatusColumn ? 1 : 0)} className="text-center text-xs text-muted-foreground py-8">
+                         {modalLoading ? t("common.loading") : t("common.searchHint")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -426,6 +520,9 @@ export function LookupSearchField({
                               {item[col] === null || item[col] === undefined ? "--" : String(item[col])}
                             </TableCell>
                           ))}
+                          {showStatusColumn && (
+                            <TableCell className="h-7 text-xs px-2 py-1">{renderStatusCell(item)}</TableCell>
+                          )}
                         </TableRow>
                       );
                     })
@@ -585,6 +682,12 @@ export function LookupSearchField({
               placeholder="Digite para pesquisar..."
               className="h-8 text-xs flex-1"
             />
+            {showActiveFilter && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Switch id="modal-active-single" checked={modalActiveOnly} onCheckedChange={setModalActiveOnly} className="h-4 w-7 [&>span]:h-3 [&>span]:w-3" />
+                <Label htmlFor="modal-active-single" className="text-xs cursor-pointer whitespace-nowrap">{t("common.active")}</Label>
+              </div>
+            )}
             <Button size="sm" className="h-8 text-xs gap-1" onClick={() => doModalSearch(1)} disabled={modalLoading}>
               {modalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
               Pesquisar
@@ -599,13 +702,16 @@ export function LookupSearchField({
                       {getColumnLabel(col)}
                     </TableHead>
                   ))}
+                  {showStatusColumn && (
+                    <TableHead className="h-7 text-xs px-2 w-[80px]">{t("common.status")}</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {modalItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={modalColumns.length || 1} className="text-center text-xs text-muted-foreground py-8">
-                      {modalLoading ? "Carregando..." : "Utilize o campo acima para pesquisar."}
+                    <TableCell colSpan={(modalColumns.length || 1) + (showStatusColumn ? 1 : 0)} className="text-center text-xs text-muted-foreground py-8">
+                      {modalLoading ? t("common.loading") : t("common.searchHint")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -620,6 +726,9 @@ export function LookupSearchField({
                           {item[col] === null || item[col] === undefined ? "--" : String(item[col])}
                         </TableCell>
                       ))}
+                      {showStatusColumn && (
+                        <TableCell className="h-7 text-xs px-2 py-1">{renderStatusCell(item)}</TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
@@ -656,6 +765,31 @@ export function LookupSearchField({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Driver advanced search modal */}
+      {useDriverModal && (
+        <DriverSearchModal
+          open={driverModalOpen}
+          onOpenChange={setDriverModalOpen}
+          forceActiveOnly={forceActiveOnly}
+          onSelect={(id, item) => {
+            const normalized = normalizeLookupItem(item);
+            selectItem(normalized);
+          }}
+        />
+      )}
+
+      {/* Location advanced search modal */}
+      {useLocationModal && (
+        <LocationSearchModal
+          open={locationModalOpen}
+          onOpenChange={setLocationModalOpen}
+          onSelect={(id, item) => {
+            const normalized = normalizeLookupItem(item);
+            selectItem(normalized);
+          }}
+        />
+      )}
     </>
   );
 }

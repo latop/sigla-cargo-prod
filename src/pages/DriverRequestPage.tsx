@@ -513,39 +513,31 @@ const DriverRequestPage = () => {
                 hasError={!filters.endDate}
               />
             </div>
-            {/* 3. Motorista */}
+            {/* 3. Grupo de Localidade (Droplist) */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium">Motorista</Label>
-              <LookupSearchField
-                endpoint="Drivers"
-                searchFilterParam="Filter1String"
-                value={filters.driverId}
-                onChange={(id) => setFilters((f) => ({ ...f, driverId: id }))}
-                labelFn="codeName"
-                placeholder="Motorista..."
-                nullable
-                modalVisibleColumns={["nickName", "integrationCode", "registration"]}
-                columnLabels={{
-                  nickName: "Apelido",
-                  integrationCode: "Cód. Integração",
-                  registration: "CPF",
-                }}
-              />
+              <Label className="text-xs font-medium">Grupo de Localidade</Label>
+              <Select
+                value={filters.locationGroupId || "__all__"}
+                onValueChange={(v) =>
+                  setFilters((f) => ({ ...f, locationGroupId: v === "__all__" ? "" : v }))
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todos..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__" className="text-xs text-muted-foreground">
+                    -- Todos --
+                  </SelectItem>
+                  {locationGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id} className="text-xs">
+                      {g.code} - {g.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {/* 4. Atividade */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium">Atividade</Label>
-              <LookupSearchField
-                endpoint="ActivityTruck"
-                searchFilterParam="Filter1String"
-                value={filters.activityId}
-                onChange={(id) => setFilters((f) => ({ ...f, activityId: id }))}
-                labelFn="codeDescription"
-                placeholder="Atividade..."
-                nullable
-              />
-            </div>
-            {/* 5. Grupo de Frota (Droplist) */}
+            {/* 4. Grupo de Frota (Droplist) */}
             <div className="space-y-1">
               <Label className="text-xs font-medium">Grupo de Frota</Label>
               <Select
@@ -569,29 +561,44 @@ const DriverRequestPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            {/* 6. Grupo de Localização (Droplist) */}
+            {/* 5. Motorista */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium">Gr. Local</Label>
-              <Select
-                value={filters.locationGroupId || "__all__"}
-                onValueChange={(v) =>
-                  setFilters((f) => ({ ...f, locationGroupId: v === "__all__" ? "" : v }))
-                }
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Todos..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__" className="text-xs text-muted-foreground">
-                    -- Todos --
-                  </SelectItem>
-                  {locationGroups.map((g) => (
-                    <SelectItem key={g.id} value={g.id} className="text-xs">
-                      {g.code} - {g.description}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs font-medium">Motorista</Label>
+              <LookupSearchField
+                endpoint="Drivers"
+                searchFilterParam="Filter1String"
+                value={filters.driverId}
+                onChange={(id) => setFilters((f) => ({ ...f, driverId: id }))}
+                placeholder="Motorista..."
+                className="h-8 text-xs"
+                nullable
+                displayAsText
+                modalVisibleColumns={["nickName", "integrationCode", "registration"]}
+                columnLabels={{
+                  nickName: t("driver.nickName"),
+                  integrationCode: t("driver.integrationCode"),
+                  registration: t("driver.registration"),
+                }}
+                transformItem={(item) => ({
+                  ...item,
+                  id: item.id as string,
+                  code: "",
+                  name: `${item.nickName || ""} - ${item.integrationCode || ""}`,
+                })}
+              />
+            </div>
+            {/* 6. Atividade */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Atividade</Label>
+              <LookupSearchField
+                endpoint="ActivityTruck"
+                searchFilterParam="Filter1String"
+                value={filters.activityId}
+                onChange={(id) => setFilters((f) => ({ ...f, activityId: id }))}
+                labelFn="codeDescription"
+                placeholder="Atividade..."
+                nullable
+              />
             </div>
             {/* 7. Status */}
             <div className="space-y-1">
@@ -771,7 +778,7 @@ const DriverRequestPage = () => {
                                 {/* Ações */}
                                 <TableCell className="text-center text-xs py-0.5 px-3">
                                   {isPending && (
-                                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center justify-center gap-1">
                                       <Button
                                         variant="ghost"
                                         size="icon"

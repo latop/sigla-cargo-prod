@@ -264,7 +264,7 @@ const ActivityTypePage = () => {
           <div className="space-y-2 pt-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">{t("common.code")} *</Label>
+                <Label className="text-xs">{t("common.code")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={formData.code || ""}
                   onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
@@ -274,7 +274,7 @@ const ActivityTypePage = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t("common.function")} *</Label>
+                <Label className="text-xs">{t("common.function")} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.function || ""}
                   onValueChange={(v) => setFormData((p) => ({ ...p, function: v }))}
@@ -292,7 +292,7 @@ const ActivityTypePage = () => {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">{t("common.description")} *</Label>
+              <Label className="text-xs">{t("common.description")} <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.description || ""}
                 onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value.toUpperCase() }))}

@@ -30,7 +30,19 @@ import { LookupSearchField } from "@/components/LookupSearchField";
 import { FloatingPanel } from "@/components/FloatingPanel";
 import { cn } from "@/lib/utils";
 
+// --- Types ---
+interface LookupItem { id: string; code?: string; description?: string; name?: string; [k: string]: unknown; }
+
 // --- Helpers ---
+const fetchLookup = async (endpoint: string): Promise<LookupItem[]> => {
+  const res = await fetch(`${API_BASE}/${endpoint}?PageSize=999`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+};
+
+const lookupLabel = (item: LookupItem) =>
+  item.code && item.description ? `${item.code} - ${item.description}` : item.code || item.description || item.name || item.id;
+
 const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -172,6 +184,10 @@ const PublishJourneyPage = () => {
   const [publishItem, setPublishItem] = useState<PublishJourneyItem | null>(null);
   const [detailItem, setDetailItem] = useState<PublishJourneyItem | null>(null);
 
+  // Lookups
+  const { data: locationGroups } = useQuery<LookupItem[]>({ queryKey: ["location-groups-pj"], queryFn: () => fetchLookup("LocationGroup") });
+  const { data: fleetGroups } = useQuery<LookupItem[]>({ queryKey: ["fleet-groups-pj"], queryFn: () => fetchLookup("FleetGroup") });
+
   const { data: queryData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["publish-journey", searchParams, currentPage, pageSize],
     queryFn: () => fetchJourneys(searchParams, currentPage, pageSize),
@@ -200,6 +216,10 @@ const PublishJourneyPage = () => {
       toast({ title: "Período obrigatório", description: "Informe a data inicial e a data final.", variant: "error" });
       return;
     }
+    if (filters.startDate > filters.endDate) {
+      toast({ title: t("driverVacation.startAfterEnd"), variant: "destructive" });
+      return;
+    }
     setSearchParams({ ...filters });
     setCurrentPage(1);
     setSearched(true);
@@ -219,7 +239,7 @@ const PublishJourneyPage = () => {
     const exportData = items.map((item) => ({
       Data: formatDateShort(item.date),
       Atividade: item.activityDescription || "",
-      "Grupo de Localização": item.locationGroupDescription || "",
+      "Grupo de Localidade": item.locationGroupDescription || "",
       "Grupo de Frota": item.fleetGroupDescription || "",
       Motorista: item.driverName || "",
       Programação: item.scheduleDescription || "",
@@ -258,7 +278,7 @@ const PublishJourneyPage = () => {
   const columns = [
     { key: "date", label: "Data", format: formatDateShort },
     { key: "activityDescription", label: "Atividade" },
-    { key: "locationGroupDescription", label: "Grupo de Localização" },
+    { key: "locationGroupDescription", label: "Grupo de Localidade" },
     { key: "fleetGroupDescription", label: "Grupo de Frota" },
     { key: "driverName", label: "Motorista" },
     { key: "scheduleDescription", label: "Programação" },
@@ -269,7 +289,7 @@ const PublishJourneyPage = () => {
   const detailFields = [
     { key: "date", label: "Data", format: formatDateTime },
     { key: "activityDescription", label: "Atividade" },
-    { key: "locationGroupDescription", label: "Grupo de Localização" },
+    { key: "locationGroupDescription", label: "Grupo de Localidade" },
     { key: "fleetGroupDescription", label: "Grupo de Frota" },
     { key: "driverName", label: "Motorista" },
     { key: "scheduleDescription", label: "Programação" },
@@ -353,28 +373,38 @@ const PublishJourneyPage = () => {
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs font-medium">Grupo de Localização</Label>
-            <LookupSearchField
-              endpoint="LocationGroup"
-              searchFilterParam="Filter1String"
-              value={filters.locationGroupId}
-              onChange={(id) => setFilters((f) => ({ ...f, locationGroupId: id }))}
-              labelFn="codeDescription"
-              placeholder="Grupo Local..."
-              nullable
-            />
+            <Label className="text-xs font-medium">Grupo de Localidade</Label>
+            <Select
+              value={filters.locationGroupId || "__all__"}
+              onValueChange={(v) => setFilters((f) => ({ ...f, locationGroupId: v === "__all__" ? "" : v }))}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Todos..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__" className="text-xs text-muted-foreground">-- Todos --</SelectItem>
+                {locationGroups?.map((g) => (
+                  <SelectItem key={g.id} value={g.id} className="text-xs">{lookupLabel(g)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-medium">Grupo de Frota</Label>
-            <LookupSearchField
-              endpoint="FleetGroup"
-              searchFilterParam="Filter1String"
-              value={filters.fleetGroupId}
-              onChange={(id) => setFilters((f) => ({ ...f, fleetGroupId: id }))}
-              labelFn="codeDescription"
-              placeholder="Grupo Frota..."
-              nullable
-            />
+            <Select
+              value={filters.fleetGroupId || "__all__"}
+              onValueChange={(v) => setFilters((f) => ({ ...f, fleetGroupId: v === "__all__" ? "" : v }))}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Todos..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__" className="text-xs text-muted-foreground">-- Todos --</SelectItem>
+                {fleetGroups?.map((g) => (
+                  <SelectItem key={g.id} value={g.id} className="text-xs">{lookupLabel(g)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-medium">Atividade</Label>

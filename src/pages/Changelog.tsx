@@ -15,6 +15,70 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.17.0",
+    date: "2026-03-30",
+    type: "feature",
+    changes: [
+      {
+        pt: "Tela de Documentos do Motorista completa com KPIs (Total, Ativos, A Vencer, Taxa de Leitura), filtros por nome/status/obrigatoriedade, CRUD com upload de arquivo, controle de envio em massa e rastreamento de leitura por destinatário",
+        en: "Complete Driver Documents screen with KPIs (Total, Active, Expiring, Read Rate), filters by name/status/required, CRUD with file upload, mass send control and per-recipient read tracking",
+        es: "Pantalla de Documentos del Conductor completa con KPIs (Total, Activos, Por Vencer, Tasa de Lectura), filtros por nombre/estado/obligatoriedad, CRUD con carga de archivo, envío masivo y rastreo de lectura por destinatario",
+      },
+      {
+        pt: "Frequência de Localidade: filtro de Localidade com pesquisa avançada (LookupSearchField) e toolbar com botões Pesquisar, Limpar e Novo",
+        en: "Location Frequency: Location filter with advanced search (LookupSearchField) and toolbar with Search, Clear and New buttons",
+        es: "Frecuencia de Localidad: filtro de Localidad con búsqueda avanzada (LookupSearchField) y barra de herramientas con botones Buscar, Limpiar y Nuevo",
+      },
+      {
+        pt: "Traduções (pt/en/es) sincronizadas com novas chaves para Documentos do Motorista e Frequência de Localidade",
+        en: "Translations (pt/en/es) synchronized with new keys for Driver Documents and Location Frequency",
+        es: "Traducciones (pt/en/es) sincronizadas con nuevas claves para Documentos del Conductor y Frecuencia de Localidad",
+      },
+      {
+        pt: "Manuais de Usuário e Técnico atualizados com documentação das telas de Documentos do Motorista e Frequência de Localidade",
+        en: "User and Technical Manuals updated with Driver Documents and Location Frequency screen documentation",
+        es: "Manuales de Usuario y Técnico actualizados con documentación de las pantallas de Documentos del Conductor y Frecuencia de Localidad",
+      },
+    ],
+  },
+  {
+    version: "1.16.0",
+    date: "2026-03-30",
+    type: "feature",
+    changes: [
+      {
+        pt: "Pesquisa avançada de Motorista integrada ao LookupSearchField com filtros por Nome de Escala, Cód. GPID, Base de Motorista e Grupo de Frota",
+        en: "Advanced Driver search integrated into LookupSearchField with filters by Schedule Name, GPID Code, Driver Base and Fleet Group",
+        es: "Búsqueda avanzada de Conductor integrada al LookupSearchField con filtros por Nombre de Escala, Cód. GPID, Base y Grupo de Flota",
+      },
+      {
+        pt: "Pesquisa avançada de Localidade integrada ao LookupSearchField com filtros por Código, Nome, Grupo de Localidade, Tipo de Localidade e Cód. TMS",
+        en: "Advanced Location search integrated into LookupSearchField with filters by Code, Name, Location Group, Location Type and TMS Code",
+        es: "Búsqueda avanzada de Localidad integrada al LookupSearchField con filtros por Código, Nombre, Grupo de Localidad, Tipo de Localidad y Cód. TMS",
+      },
+      {
+        pt: "Colunas Base de Motorista e Grupo de Frota na pesquisa avançada agora resolvem corretamente driverBases e driverFleets da API",
+        en: "Driver Base and Fleet Group columns in advanced search now correctly resolve driverBases and driverFleets from API",
+        es: "Columnas Base de Conductor y Grupo de Flota en la búsqueda avanzada ahora resuelven correctamente driverBases y driverFleets de la API",
+      },
+      {
+        pt: "Filtro de Grupo de Frota na pesquisa avançada de motorista agora funciona corretamente (sozinho ou combinado com Base)",
+        en: "Fleet Group filter in advanced driver search now works correctly (alone or combined with Base)",
+        es: "Filtro de Grupo de Flota en la búsqueda avanzada de conductor ahora funciona correctamente (solo o combinado con Base)",
+      },
+      {
+        pt: "Suporte a Ctrl+V (colar) no campo Cód. GPID da pesquisa avançada de motorista",
+        en: "Ctrl+V (paste) support in GPID Code field of advanced driver search",
+        es: "Soporte a Ctrl+V (pegar) en el campo Cód. GPID de la búsqueda avanzada de conductor",
+      },
+      {
+        pt: "Toggle Ativo/Inativo disponível em todas as telas com pesquisa avançada de motorista",
+        en: "Active/Inactive toggle available on all screens with advanced driver search",
+        es: "Toggle Activo/Inactivo disponible en todas las pantallas con búsqueda avanzada de conductor",
+      },
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-03-20",
     type: "improvement",
@@ -407,7 +471,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.15.0";
+export const APP_VERSION = "1.17.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

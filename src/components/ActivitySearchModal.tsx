@@ -1,7 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -11,6 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { API_BASE } from "@/config/api";
 
 type Rec = Record<string, unknown>;
@@ -28,31 +33,26 @@ interface ActivitySearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (id: string, item: Rec) => void;
+  /** Always force only active activities without showing toggle */
+  forceActiveOnly?: boolean;
 }
 
-const formatTime = (v?: string | null) => {
-  if (!v) return "--";
-  try {
-    const d = new Date(v);
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  } catch {
-    return "--";
+const isActivityActive = (item: Rec): boolean => {
+  const raw = item.flgActive ?? item.isActive ?? item.IsActive ?? item.FlgActive;
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw === 1;
+  if (typeof raw === "string") {
+    const lower = raw.toLowerCase();
+    return lower === "true" || lower === "1" || lower === "sim" || lower === "yes" || lower === "ativo" || lower === "active";
   }
+  return false;
 };
 
-const COLUMNS = [
-  { key: "code", label: "Código" },
-  { key: "description", label: "Descrição" },
-  { key: "startTime", label: "Início" },
-  { key: "endTime", label: "Fim" },
-  { key: "activityTypeCode", label: "Tipo Atividade" },
-  { key: "flgActiveLabel", label: "Ativo" },
-];
-
-export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySearchModalProps) {
+export function ActivitySearchModal({ open, onOpenChange, onSelect, forceActiveOnly = false }: ActivitySearchModalProps) {
+  const { t } = useTranslation();
   const [filterCode, setFilterCode] = useState("");
-  const [filterActivityTypeId, setFilterActivityTypeId] = useState("all");
-  const [filterActive, setFilterActive] = useState<string>("all");
+  const [filterActivityTypeCode, setFilterActivityTypeCode] = useState("all");
+  const [activeOnly, setActiveOnly] = useState(true);
   const [items, setItems] = useState<Rec[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
@@ -69,8 +69,8 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
         if (!res.ok) return;
         const data: Rec[] = await res.json();
         const types = data
-          .map((t) => ({ id: String(t.id), code: String(t.code || "") }))
-          .filter((t) => t.code)
+          .map((at) => ({ id: String(at.id), code: String(at.code || "") }))
+          .filter((at) => at.code)
           .sort((a, b) => a.code.localeCompare(b.code));
         setActivityTypes(types);
       } catch { /* ignore */ }
@@ -81,8 +81,8 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
   useEffect(() => {
     if (open && !prevOpenRef.current) {
       setFilterCode("");
-      setFilterActivityTypeId("all");
-      setFilterActive("all");
+      setFilterActivityTypeCode("all");
+      setActiveOnly(true);
       setItems([]);
       setPagination(null);
       setSearched(false);
@@ -90,17 +90,20 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
     prevOpenRef.current = open;
   }, [open]);
 
-  const hasFilter = filterCode.trim() || filterActivityTypeId !== "all" || filterActive !== "all";
-
   const doSearch = useCallback(async (pageNum = 1, ps = pageSize) => {
     setLoading(true);
     setSearched(true);
     try {
       const params = new URLSearchParams();
       if (filterCode.trim()) params.set("Filter1String", filterCode.trim());
-      if (filterActivityTypeId !== "all") params.set("Filter1Id", filterActivityTypeId);
-      if (filterActive === "true") params.set("Filter2Bool", "true");
-      if (filterActive === "false") params.set("Filter2Bool", "false");
+      if (filterActivityTypeCode !== "all") params.set("Filter1Id", filterActivityTypeCode);
+
+      // IsActive filter
+      const shouldFilterActive = forceActiveOnly || activeOnly;
+      const shouldFilterInactive = !forceActiveOnly && !activeOnly;
+      if (shouldFilterActive) params.set("IsActive", "1");
+      else if (shouldFilterInactive) params.set("IsActive", "0");
+
       params.set("PageSize", String(ps));
       params.set("PageNumber", String(pageNum));
 
@@ -111,28 +114,31 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
       const pHeader = res.headers.get("x-pagination");
       const pag: PaginationMeta = pHeader
         ? JSON.parse(pHeader)
-        : { TotalCount: rawItems.length, PageSize: 10, CurrentPage: pageNum, TotalPages: 1, HasNext: false, HasPrevious: false };
+        : { TotalCount: rawItems.length, PageSize: ps, CurrentPage: pageNum, TotalPages: 1, HasNext: false, HasPrevious: false };
 
+      // Resolve display fields
       const resolved = rawItems.map((item) => {
         const activityType = item.activityType as Rec | null;
         return {
           ...item,
-          startTime: formatTime(item.start as string | null),
-          endTime: formatTime(item.end as string | null),
           activityTypeCode: activityType?.code ?? "--",
-          flgActiveLabel: item.flgActive === true ? "Sim" : item.flgActive === false ? "Não" : "--",
         };
       });
 
-      setItems(resolved);
-      setPagination(pag);
+      // Client-side safety filter
+      const filtered = (shouldFilterActive || shouldFilterInactive)
+        ? resolved.filter((item) => isActivityActive(item) === shouldFilterActive)
+        : resolved;
+
+      setItems(filtered);
+      setPagination({ ...pag, TotalCount: filtered.length });
       setPage(pageNum);
     } catch {
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [filterCode, filterActivityTypeId, filterActive, pageSize]);
+  }, [filterCode, filterActivityTypeCode, activeOnly, forceActiveOnly, pageSize]);
 
   const handleSelect = (item: Rec) => {
     onSelect(String(item.id), item);
@@ -141,61 +147,74 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
 
   const resetFilters = () => {
     setFilterCode("");
-    setFilterActivityTypeId("all");
-    setFilterActive("all");
+    setFilterActivityTypeCode("all");
+    setActiveOnly(true);
     setItems([]);
     setPagination(null);
     setSearched(false);
     setPageSize(10);
   };
 
+  const renderStatusBadge = (item: Rec) => {
+    const active = isActivityActive(item);
+    return (
+      <Badge variant="outline" className={cn(
+        "text-[10px] font-medium uppercase",
+        active
+          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+          : "bg-muted text-muted-foreground border-border"
+      )}>
+        {active ? t("common.active") : t("common.inactive")}
+      </Badge>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">Pesquisar Atividade</DialogTitle>
+          <DialogTitle className="text-sm font-display">{t("activity.searchTitle") || "Pesquisar Atividade"}</DialogTitle>
           <DialogDescription className="sr-only">Busca avançada de atividades com filtros</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 items-end">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Código</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.code")}</label>
             <Input
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
-              placeholder="Código da atividade..."
+              placeholder={t("common.code") + "..."}
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Tipo de Atividade</label>
-            <Select value={filterActivityTypeId} onValueChange={setFilterActivityTypeId}>
+            <label className="text-xs font-medium text-muted-foreground">{t("activity.activityType") || "Tipo de Atividade"}</label>
+            <Select value={filterActivityTypeCode} onValueChange={setFilterActivityTypeCode}>
               <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Todos" />
+                <SelectValue placeholder={t("common.selectAll")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">{t("common.selectAll")}</SelectItem>
                 {activityTypes.map((at) => (
                   <SelectItem key={at.id} value={at.id}>{at.code}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Ativo</label>
-            <Select value={filterActive} onValueChange={setFilterActive}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="true">Sim</SelectItem>
-                <SelectItem value="false">Não</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* IsActive toggle - same pattern as Driver search */}
+          {!forceActiveOnly && (
+            <div className="flex items-center gap-2 h-8">
+              <Switch
+                checked={activeOnly}
+                onCheckedChange={setActiveOnly}
+              />
+              <Label className="text-xs cursor-pointer" onClick={() => setActiveOnly(!activeOnly)}>
+                {activeOnly ? t("common.active") : t("common.inactive")}
+              </Label>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end">
@@ -206,7 +225,7 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
             disabled={loading}
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            Pesquisar
+            {t("common.search")}
           </Button>
         </div>
 
@@ -215,18 +234,17 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
           <Table>
             <TableHeader>
               <TableRow>
-                {COLUMNS.map((col) => (
-                  <TableHead key={col.key} className="h-7 text-xs px-2">
-                    {col.label}
-                  </TableHead>
-                ))}
+                <TableHead className="h-7 text-xs px-2">{t("common.code")}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("common.description")}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("activity.activityType") || "Tipo Atividade"}</TableHead>
+                <TableHead className="h-7 text-xs px-2 w-[90px] text-center">{t("common.status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={COLUMNS.length} className="text-center text-xs text-muted-foreground py-8">
-                    {loading ? "Carregando..." : searched ? "Nenhum resultado encontrado." : "Preencha os filtros e clique em Pesquisar."}
+                  <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-8">
+                    {loading ? t("common.loading") : searched ? t("common.noResults") : t("common.searchHint")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -236,11 +254,10 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
                     className="cursor-pointer hover:bg-primary/5"
                     onClick={() => handleSelect(item)}
                   >
-                    {COLUMNS.map((col) => (
-                      <TableCell key={col.key} className="h-7 text-xs px-2 py-1">
-                        {item[col.key] === null || item[col.key] === undefined ? "--" : String(item[col.key])}
-                      </TableCell>
-                    ))}
+                    <TableCell className="h-7 text-xs px-2 py-1">{String(item.code ?? "--")}</TableCell>
+                    <TableCell className="h-7 text-xs px-2 py-1">{String(item.description ?? "--")}</TableCell>
+                    <TableCell className="h-7 text-xs px-2 py-1">{String(item.activityTypeCode ?? "--")}</TableCell>
+                    <TableCell className="h-7 text-xs px-2 py-1 text-center">{renderStatusBadge(item)}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -262,7 +279,7 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect }: ActivitySe
                   ))}
                 </SelectContent>
               </Select>
-              <span>{pagination.TotalCount} registro(s)</span>
+              <span>{pagination.TotalCount} {t("common.records")}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button

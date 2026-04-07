@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import {
   Search, Loader2, X,
   Plus, Pencil, Trash2, Save, User,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Eye, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,11 @@ import { DatePickerField } from "@/components/DatePickerField";
 import { FloatingPanel } from "@/components/FloatingPanel";
 import { API_BASE } from "@/config/api";
 import { LookupSearchField } from "@/components/LookupSearchField";
+import { LineSearchModal } from "@/components/LineSearchModal";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 
 // --- Types ---
 interface DriverItem {
@@ -104,6 +109,15 @@ interface DriverPosition {
   startDate?: string | null;
   endDate?: string | null;
   position?: { id?: string; code?: string; description?: string } | null;
+}
+
+interface DriverLicenseItem {
+  id?: string;
+  driverId?: string;
+  licenseId?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  license?: { id?: string; code?: string; description?: string } | null;
 }
 
 interface LookupItem {
@@ -294,7 +308,7 @@ const createDriver = async (data: Partial<DriverItem>): Promise<DriverItem> => {
 
 const updateDriver = async (data: Partial<DriverItem>): Promise<DriverItem> => {
   if (USE_MOCK) return data as DriverItem;
-  const res = await fetch(`${API_BASE}/Drivers`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+  const res = await fetch(`${API_BASE}/Drivers/UpdateDriver`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 };
@@ -329,57 +343,160 @@ const lookupLabel = (item: LookupItem) => {
   return parts.join(" - ") || item.id;
 };
 
-// --- Sub-entity CRUD table ---
+// --- Vacation table (no lookup, just dates) ---
+interface VacationTableProps {
+  items: { id?: string; startDate?: string | null; endDate?: string | null; [k: string]: unknown }[];
+  t: (k: string) => string;
+  driverId?: string;
+  onAdd: (startDate: string, endDate: string) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}
+
+const VacationTable = ({ items, t, driverId, onAdd, onRemove }: VacationTableProps) => {
+  const [newStartDate, setNewStartDate] = useState(todayISO());
+  const [newEndDate, setNewEndDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    if (!newStartDate || !newEndDate) return;
+    setSaving(true);
+    try {
+      await onAdd(`${newStartDate}T00:00:00`, `${newEndDate}T00:00:00`);
+      setNewStartDate(todayISO());
+      setNewEndDate("");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {driverId && (
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("driver.startDate")}</Label>
+            <DatePickerField value={newStartDate ? `${newStartDate}T00:00:00` : null} onChange={(v) => setNewStartDate(v ? v.substring(0, 10) : todayISO())} className="h-9" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("driver.endDate")}</Label>
+            <DatePickerField value={newEndDate ? `${newEndDate}T00:00:00` : null} onChange={(v) => setNewEndDate(v ? v.substring(0, 10) : "")} className="h-9" />
+          </div>
+          <Button size="sm" variant="outline" className="h-9" onClick={handleAdd} disabled={!newStartDate || !newEndDate || saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}{t("common.new")}
+          </Button>
+        </div>
+      )}
+      {!driverId && (
+        <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>
+      )}
+
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">{t("common.noResults")}</p>
+      ) : (
+        <div className="overflow-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="text-xs w-[180px]">{t("driver.startDate")}</TableHead>
+                <TableHead className="text-xs w-[180px]">{t("driver.endDate")}</TableHead>
+                <TableHead className="text-xs w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((row, i) => (
+                <TableRow key={row.id || i}>
+                  <TableCell className="text-xs">{formatDate(row.startDate)}</TableCell>
+                  <TableCell className="text-xs">{formatDate(row.endDate)}</TableCell>
+                  <TableCell className="text-xs text-center">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => row.id && onRemove(row.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Sub-entity CRUD table (API-backed) ---
+interface ExtraColumn {
+  header: string;
+  render: (row: { [k: string]: unknown }) => React.ReactNode;
+  width?: string;
+}
+
 interface SubEntityTableProps {
   items: { id?: string; startDate?: string | null; endDate?: string | null; [k: string]: unknown }[];
   lookupItems: LookupItem[];
   lookupKey: string;
   lookupLabel: string;
   t: (k: string) => string;
-  onAdd: (lookupId: string, startDate: string) => void;
-  onRemove: (index: number) => void;
-  onUpdateEndDate: (index: number, endDate: string | null) => void;
+  onAdd: (lookupId: string, startDate: string, endDate: string | null) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
   getLookupDisplay: (item: { [k: string]: unknown }) => string;
+  driverId?: string;
+  extraColumns?: ExtraColumn[];
 }
 
-const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, t, onAdd, onRemove, onUpdateEndDate, getLookupDisplay }: SubEntityTableProps) => {
+const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, t, onAdd, onRemove, getLookupDisplay, driverId, extraColumns }: SubEntityTableProps) => {
   const [newLookupId, setNewLookupId] = useState("");
   const [newStartDate, setNewStartDate] = useState(todayISO());
+  const [newEndDate, setNewEndDate] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newLookupId) return;
-    onAdd(newLookupId, `${newStartDate}T00:00:00`);
-    setNewLookupId("");
-    setNewStartDate(todayISO());
+    setSaving(true);
+    try {
+      await onAdd(newLookupId, `${newStartDate}T00:00:00`, newEndDate ? `${newEndDate}T00:00:00` : null);
+      setNewLookupId("");
+      setNewStartDate(todayISO());
+      setNewEndDate("");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="space-y-3">
       {/* Add row */}
-      <div className="flex items-end gap-2">
-        <div className="flex-1 space-y-1">
-          <Label className="text-xs text-muted-foreground">{colLabel}</Label>
-          <Select value={newLookupId} onValueChange={setNewLookupId}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder={t("common.search") + "..."} />
-            </SelectTrigger>
-            <SelectContent>
-              {lookupItems.map((li) => (
-                <SelectItem key={li.id} value={li.id} className="text-xs">
-                  {lookupLabel(li)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {driverId && (
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-1">
+            <Label className="text-xs text-muted-foreground">{colLabel}</Label>
+            <Select value={newLookupId} onValueChange={setNewLookupId}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder={t("common.search") + "..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {lookupItems.map((li) => (
+                  <SelectItem key={li.id} value={li.id} className="text-xs">
+                    {lookupLabel(li)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("driver.startDate")}</Label>
+            <DatePickerField value={newStartDate ? `${newStartDate}T00:00:00` : null} onChange={(v) => setNewStartDate(v ? v.substring(0, 10) : todayISO())} className="h-9" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("driver.endDate")}</Label>
+            <DatePickerField value={newEndDate ? `${newEndDate}T00:00:00` : null} onChange={(v) => setNewEndDate(v ? v.substring(0, 10) : "")} className="h-9" />
+          </div>
+          <Button size="sm" variant="outline" className="h-9" onClick={handleAdd} disabled={!newLookupId || saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}{t("common.new")}
+          </Button>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">{t("driver.startDate")}</Label>
-          <DatePickerField value={newStartDate ? `${newStartDate}T00:00:00` : null} onChange={(v) => setNewStartDate(v ? v.substring(0, 10) : todayISO())} className="h-9" />
-        </div>
-        <Button size="sm" variant="outline" className="h-9" onClick={handleAdd} disabled={!newLookupId}>
-          <Plus className="h-3.5 w-3.5 mr-1" />{t("common.new")}
-        </Button>
-      </div>
+      )}
+      {!driverId && (
+        <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>
+      )}
 
       {/* Table */}
       {items.length === 0 ? (
@@ -390,8 +507,11 @@ const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, 
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="text-xs">{colLabel}</TableHead>
-                <TableHead className="text-xs">{t("driver.startDate")}</TableHead>
-                <TableHead className="text-xs">{t("driver.endDate")}</TableHead>
+                {extraColumns?.map((ec, idx) => (
+                  <TableHead key={idx} className="text-xs" style={ec.width ? { width: ec.width } : undefined}>{ec.header}</TableHead>
+                ))}
+                <TableHead className="text-xs w-[180px]">{t("driver.startDate")}</TableHead>
+                <TableHead className="text-xs w-[180px]">{t("driver.endDate")}</TableHead>
                 <TableHead className="text-xs w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -399,15 +519,13 @@ const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, 
               {items.map((row, i) => (
                 <TableRow key={row.id || i}>
                   <TableCell className="text-xs">{getLookupDisplay(row)}</TableCell>
+                  {extraColumns?.map((ec, idx) => (
+                    <TableCell key={idx} className="text-xs">{ec.render(row)}</TableCell>
+                  ))}
                   <TableCell className="text-xs">{formatDate(row.startDate)}</TableCell>
-                  <TableCell className="text-xs">
-                    <DatePickerField
-                      value={row.endDate || null}
-                      onChange={(v) => onUpdateEndDate(i, v)}
-                    />
-                  </TableCell>
+                  <TableCell className="text-xs">{formatDate(row.endDate)}</TableCell>
                   <TableCell className="text-xs text-center">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onRemove(i)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => row.id && onRemove(row.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </TableCell>
@@ -417,6 +535,51 @@ const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, 
           </Table>
         </div>
       )}
+    </div>
+  );
+};
+
+// --- Read-only sub-entity table (for tabs that only display API data) ---
+interface ReadOnlySubEntityTableProps {
+  items: { id?: string; startDate?: string | null; endDate?: string | null; description?: string; code?: string; name?: string; [k: string]: unknown }[];
+  t: (k: string) => string;
+  driverId?: string;
+}
+
+const ReadOnlySubEntityTable = ({ items, t, driverId }: ReadOnlySubEntityTableProps) => {
+  if (!driverId) {
+    return <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>;
+  }
+  if (items.length === 0) {
+    return <p className="text-xs text-muted-foreground py-2">{t("common.noResults")}</p>;
+  }
+
+  // Auto-detect columns from first item (exclude internal keys)
+  const excludeKeys = new Set(["id", "driverId", "createdAt", "updatedAt", "isDeleted"]);
+  const columns = Object.keys(items[0]).filter(k => !excludeKeys.has(k) && items[0][k] !== undefined && items[0][k] !== null && typeof items[0][k] !== "object");
+
+  return (
+    <div className="overflow-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            {columns.map((col) => (
+              <TableHead key={col} className="text-xs capitalize">{col}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((row, i) => (
+            <TableRow key={row.id || i}>
+              {columns.map((col) => (
+                <TableCell key={col} className="text-xs">
+                  {col.toLowerCase().includes("date") ? formatDate(row[col] as string) : String(row[col] ?? "--")}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };
@@ -466,6 +629,14 @@ const DriverPage = () => {
   const { data: attributions } = useQuery<LookupItem[]>({
     queryKey: ["attributions"],
     queryFn: () => fetchLookup("Attribution", MOCK_ATTRIBUTIONS),
+  });
+  const { data: licenses } = useQuery<LookupItem[]>({
+    queryKey: ["licenses-lookup"],
+    queryFn: () => fetchLookup("License", []),
+  });
+  const { data: courses } = useQuery<LookupItem[]>({
+    queryKey: ["courses-lookup"],
+    queryFn: () => fetchLookup("Course", []),
   });
   const { data: cities } = useQuery<LookupItem[]>({
     queryKey: ["cities"],
@@ -530,6 +701,116 @@ const DriverPage = () => {
     },
   });
 
+  // === Generic sub-entity API helpers ===
+  interface SubEntityItem { id?: string; driverId?: string; startDate?: string | null; endDate?: string | null; [k: string]: unknown }
+
+  const [driverAttributionsList, setDriverAttributionsList] = useState<SubEntityItem[]>([]);
+  const [driverBasesList, setDriverBasesList] = useState<SubEntityItem[]>([]);
+  const [driverFleetsList, setDriverFleetsList] = useState<SubEntityItem[]>([]);
+  const [driverPositionsList, setDriverPositionsList] = useState<SubEntityItem[]>([]);
+  const [driverVacationsList, setDriverVacationsList] = useState<SubEntityItem[]>([]);
+  const [driverLicenses, setDriverLicenses] = useState<DriverLicenseItem[]>([]);
+  const [driverCoursesList, setDriverCoursesList] = useState<SubEntityItem[]>([]);
+  const [driverDedicatedRoutesList, setDriverDedicatedRoutesList] = useState<SubEntityItem[]>([]);
+  const [driverOccurrencesList, setDriverOccurrencesList] = useState<SubEntityItem[]>([]);
+  const [driverMessagesList, setDriverMessagesList] = useState<SubEntityItem[]>([]);
+
+  // Occurrence form state (top-level to avoid hooks-in-IIFE)
+  const [occDtOccurrence, setOccDtOccurrence] = useState<string | null>(`${todayISO()}T00:00:00`);
+  const [occDescription, setOccDescription] = useState("");
+  const [occResponsible, setOccResponsible] = useState("");
+  const [occWarningFlag, setOccWarningFlag] = useState(true);
+  const [occSaving, setOccSaving] = useState(false);
+  const [occDescDialogOpen, setOccDescDialogOpen] = useState(false);
+  const [occDescDialogContent, setOccDescDialogContent] = useState("");
+
+  const [newLicenseId, setNewLicenseId] = useState("");
+  const [newLicenseStart, setNewLicenseStart] = useState(todayISO());
+  const [newLicenseEnd, setNewLicenseEnd] = useState("");
+
+  // Dedicated routes (lines)
+  const [dedicatedLineModalOpen, setDedicatedLineModalOpen] = useState(false);
+  const [newDedicatedLineId, setNewDedicatedLineId] = useState("");
+  const [newDedicatedLineLabel, setNewDedicatedLineLabel] = useState("");
+  const [newDedicatedLineStart, setNewDedicatedLineStart] = useState(todayISO());
+  const [newDedicatedLineEnd, setNewDedicatedLineEnd] = useState("");
+
+  const fetchSubEntities = async (endpoint: string, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}?Filter1Id=${driverId}`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data: SubEntityItem[] = await res.json();
+      // Filter client-side to ensure only records for this specific driver are shown
+      const filtered = data.filter((item) => item.driverId === driverId);
+      setter(filtered);
+    } catch {
+      setter([]);
+    }
+  };
+
+  const saveSubEntity = async (endpoint: string, idKey: string, lookupId: string, startDate: string, endDate: string | null, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+    if (endDate && endDate < startDate) {
+      toast({ title: t("driverVacation.startAfterEnd"), variant: "destructive" });
+      return;
+    }
+    const payload = { driverId, [idKey]: lookupId, startDate, endDate };
+    const res = await fetch(`${API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    toast({ title: t("common.saveSuccess"), variant: "success" });
+    await fetchSubEntities(endpoint, driverId, setter);
+  };
+
+  const deleteSubEntityById = async (endpoint: string, id: string, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+    const res = await fetch(`${API_BASE}/${endpoint}/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    toast({ title: t("common.deleteSuccess"), variant: "success" });
+    await fetchSubEntities(endpoint, driverId, setter);
+  };
+
+  const fetchDriverLicenses = async (driverId: string) => {
+    fetchSubEntities("DriversLicense", driverId, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+  };
+
+  const saveDriverLicense = async () => {
+    if (!newLicenseId || !newLicenseStart || !formData.id) {
+      toast({ title: t("driver.licenseRequired"), variant: "destructive" });
+      return;
+    }
+    try {
+      await saveSubEntity("DriversLicense", "licenseId", newLicenseId, `${newLicenseStart}T00:00:00`, newLicenseEnd ? `${newLicenseEnd}T00:00:00` : null, formData.id, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+      setNewLicenseId("");
+      setNewLicenseStart(todayISO());
+      setNewLicenseEnd("");
+    } catch (err: unknown) {
+      toast({ title: "Erro", description: (err as Error).message, variant: "error" });
+    }
+  };
+
+  const deleteDriverLicense = async (id: string) => {
+    try {
+      await deleteSubEntityById("DriversLicense", id, formData.id!, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+    } catch (err: unknown) {
+      toast({ title: "Erro", description: (err as Error).message, variant: "error" });
+    }
+  };
+
+  const fetchAllSubEntities = (driverId: string) => {
+    fetchSubEntities("DriversAttribution", driverId, setDriverAttributionsList);
+    fetchSubEntities("DriversBase", driverId, setDriverBasesList);
+    fetchSubEntities("DriversFleet", driverId, setDriverFleetsList);
+    fetchSubEntities("DriversPosition", driverId, setDriverPositionsList);
+    fetchSubEntities("DriversVacation", driverId, setDriverVacationsList);
+    fetchDriverLicenses(driverId);
+    fetchSubEntities("DriverCourse", driverId, setDriverCoursesList);
+    fetchSubEntities("DriverDedicatedRoute", driverId, setDriverDedicatedRoutesList);
+    fetchSubEntities("DriversOccurrence", driverId, setDriverOccurrencesList);
+    fetchSubEntities("DriverMessage", driverId, setDriverMessagesList);
+  };
+
   // Handlers
   const handleSearch = () => {
     setSearchParams({ ...filters });
@@ -557,12 +838,36 @@ const DriverPage = () => {
     setFormErrors({});
     setEditingItem(null);
     setIsCreating(true);
+    setDriverLicenses([]);
+    setDriverAttributionsList([]);
+    setDriverBasesList([]);
+    setDriverFleetsList([]);
+    setDriverPositionsList([]);
+    setDriverVacationsList([]);
+    setDriverCoursesList([]);
+    setDriverDedicatedRoutesList([]);
+    setDriverOccurrencesList([]);
+    setDriverMessagesList([]);
   };
 
   const openEdit = (item: DriverItem) => {
     setFormData({ ...item });
     setEditingItem(item);
     setIsCreating(true);
+    // Use embedded sub-entity data from the Driver response (already filtered by this driver's ID)
+    if (item.id) {
+      setDriverAttributionsList((item as any).driverAttributions || []);
+      setDriverBasesList((item as any).driverBases || []);
+      setDriverFleetsList((item as any).driverFleets || []);
+      setDriverPositionsList((item as any).driverPositions || []);
+      setDriverVacationsList((item as any).driverVacations || []);
+      setDriverLicenses((item as any).driverLicenses || []);
+      setDriverCoursesList((item as any).driverCourses || []);
+      setDriverDedicatedRoutesList((item as any).driverDedicatedRoutes || []);
+      // These may not be in the Driver response yet — fetch separately
+      fetchSubEntities("DriversOccurrence", item.id, setDriverOccurrencesList);
+      fetchSubEntities("DriverMessage", item.id, setDriverMessagesList);
+    }
   };
 
   const closeForm = () => {
@@ -590,62 +895,23 @@ const DriverPage = () => {
       setShowResignConfirm(true);
       return;
     }
-    saveMutation.mutate(formData);
+    const { driverAttributions, driverBases, driverFleets, driverPositions, ...driverData } = formData;
+    saveMutation.mutate(driverData);
   };
 
   const confirmResignAndSave = (autoFill: boolean) => {
     let data = { ...formData };
     if (autoFill && pendingResignDate) {
       data.isActive = false;
-      // Fill endDate on all sub-entities that don't have one
-      data.driverAttributions = (data.driverAttributions || []).map((a) => ({
-        ...a,
-        endDate: a.endDate || pendingResignDate,
-      }));
-      data.driverBases = (data.driverBases || []).map((b) => ({
-        ...b,
-        endDate: b.endDate || pendingResignDate,
-      }));
-      data.driverFleets = (data.driverFleets || []).map((f) => ({
-        ...f,
-        endDate: f.endDate || pendingResignDate,
-      }));
-      data.driverPositions = (data.driverPositions || []).map((p) => ({
-        ...p,
-        endDate: p.endDate || pendingResignDate,
-      }));
     }
     setShowResignConfirm(false);
     setPendingResignDate(null);
-    saveMutation.mutate(data);
+    const { driverAttributions, driverBases, driverFleets, driverPositions, ...driverData } = data;
+    saveMutation.mutate(driverData);
   };
 
   const updateForm = (field: string, value: unknown) => {
     setFormData((p) => ({ ...p, [field]: value }));
-  };
-
-  // Sub-entity handlers
-  const addSubEntity = (key: string, idKey: string, lookupId: string, startDate: string) => {
-    setFormData((p) => ({
-      ...p,
-      [key]: [...((p as Record<string, unknown[]>)[key] as unknown[] || []), { id: crypto.randomUUID(), [idKey]: lookupId, startDate, endDate: null }],
-    }));
-  };
-
-  const removeSubEntity = (key: string, index: number) => {
-    setFormData((p) => ({
-      ...p,
-      [key]: ((p as Record<string, unknown[]>)[key] as unknown[] || []).filter((_: unknown, i: number) => i !== index),
-    }));
-  };
-
-  const updateSubEntityEndDate = (key: string, index: number, endDate: string | null) => {
-    setFormData((p) => ({
-      ...p,
-      [key]: ((p as Record<string, unknown[]>)[key] as Record<string, unknown>[] || []).map((item, i) =>
-        i === index ? { ...item, endDate } : item
-      ),
-    }));
   };
 
   const getLookupDisplay = (items: LookupItem[] | undefined, idKey: string, row: Record<string, unknown>) => {
@@ -677,22 +943,22 @@ const DriverPage = () => {
             <TabsContent value="general" className="space-y-2">
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.name")} *</Label>
+                  <Label className="text-xs text-muted-foreground">{t("driver.name")} <span className="text-destructive">*</span></Label>
                   <Input className={`h-8 text-xs ${formErrors.name ? "border-destructive" : ""}`} value={formData.name || ""} onChange={(e) => updateForm("name", e.target.value.toUpperCase())} />
                 </div>
                 <div className="space-y-1 col-span-2">
-                  <Label className="text-xs text-muted-foreground">{t("driver.lastName")} *</Label>
+                  <Label className="text-xs text-muted-foreground">{t("driver.lastName")} <span className="text-destructive">*</span></Label>
                   <Input className={`h-8 text-xs ${formErrors.lastName ? "border-destructive" : ""}`} value={formData.lastName || ""} onChange={(e) => updateForm("lastName", e.target.value.toUpperCase())} />
                 </div>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.nickName")} *</Label>
+                  <Label className="text-xs text-muted-foreground">{t("driver.nickName")} <span className="text-destructive">*</span></Label>
                   <Input className={`h-8 text-xs ${formErrors.nickName ? "border-destructive" : ""}`} value={formData.nickName || ""} onChange={(e) => updateForm("nickName", e.target.value.toUpperCase())} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.registration")} *</Label>
+                  <Label className="text-xs text-muted-foreground">{t("driver.registration")} <span className="text-destructive">*</span></Label>
                   <Input className={`h-8 text-xs ${formErrors.registration ? "border-destructive" : ""}`} value={formData.registration || ""} onChange={(e) => updateForm("registration", e.target.value)} />
                 </div>
                 <div className="space-y-1">
@@ -844,77 +1110,467 @@ const DriverPage = () => {
                   </p>
                 )}
                 <Tabs defaultValue="attributions" className="w-full">
-                  <TabsList className="w-full grid grid-cols-6">
-                    <TabsTrigger value="attributions" className="text-xs" disabled={!requiredFilled}>{t("driver.attributions")}</TabsTrigger>
-                    <TabsTrigger value="bases" className="text-xs" disabled={!requiredFilled}>{t("driver.bases")}</TabsTrigger>
-                    <TabsTrigger value="fleets" className="text-xs" disabled={!requiredFilled}>{t("driver.fleets")}</TabsTrigger>
-                    <TabsTrigger value="positions" className="text-xs" disabled={!requiredFilled}>{t("driver.positions")}</TabsTrigger>
-                    <TabsTrigger value="licenses" className="text-xs" disabled={!requiredFilled}>{t("driver.licensesAndCourses")}</TabsTrigger>
-                    <TabsTrigger value="dedicatedLines" className="text-xs" disabled={!requiredFilled}>{t("driver.dedicatedLines")}</TabsTrigger>
-                  </TabsList>
+                  <div className="overflow-x-auto">
+                    <TabsList className="inline-flex w-auto min-w-full h-auto flex-wrap">
+                      <TabsTrigger value="attributions" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.attributions")}</TabsTrigger>
+                      <TabsTrigger value="bases" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.bases")}</TabsTrigger>
+                      <TabsTrigger value="positions" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.positions")}</TabsTrigger>
+                      <TabsTrigger value="licenses" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.licenses")}</TabsTrigger>
+                      <TabsTrigger value="courses" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.courses")}</TabsTrigger>
+                      <TabsTrigger value="vacations" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.plannedVacations")}</TabsTrigger>
+                      <TabsTrigger value="fleets" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.fleets")}</TabsTrigger>
+                      <TabsTrigger value="dedicatedLines" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.dedicatedLines")}</TabsTrigger>
+                      <TabsTrigger value="messages" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.messages")}</TabsTrigger>
+                      <TabsTrigger value="occurrences" className="text-[10px] px-2 py-1" disabled={!requiredFilled}>{t("driver.occurrences")}</TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   <TabsContent value="attributions" className="pt-2">
                     <SubEntityTable
-                      items={(formData.driverAttributions || []) as Record<string, unknown>[]}
+                      items={driverAttributionsList}
                       lookupItems={attributions || []}
                       lookupKey="attributionId"
                       lookupLabel={t("driver.attributions")}
                       t={t}
-                      onAdd={(id, date) => addSubEntity("driverAttributions", "attributionId", id, date)}
-                      onRemove={(i) => removeSubEntity("driverAttributions", i)}
-                      onUpdateEndDate={(i, date) => updateSubEntityEndDate("driverAttributions", i, date)}
+                      driverId={formData.id}
+                      onAdd={async (id, date, endDate) => { if (formData.id) await saveSubEntity("DriversAttribution", "attributionId", id, date, endDate, formData.id, setDriverAttributionsList); }}
+                      onRemove={async (id) => { if (formData.id) await deleteSubEntityById("DriversAttribution", id, formData.id, setDriverAttributionsList); }}
                       getLookupDisplay={(row) => getLookupDisplay(attributions, "attributionId", row)}
                     />
                   </TabsContent>
 
                   <TabsContent value="bases" className="pt-2">
                     <SubEntityTable
-                      items={(formData.driverBases || []) as Record<string, unknown>[]}
+                      items={driverBasesList}
                       lookupItems={locationGroups || []}
                       lookupKey="locationGroupId"
                       lookupLabel={t("driver.bases")}
                       t={t}
-                      onAdd={(id, date) => addSubEntity("driverBases", "locationGroupId", id, date)}
-                      onRemove={(i) => removeSubEntity("driverBases", i)}
-                      onUpdateEndDate={(i, date) => updateSubEntityEndDate("driverBases", i, date)}
+                      driverId={formData.id}
+                      onAdd={async (id, date, endDate) => { if (formData.id) await saveSubEntity("DriversBase", "locationGroupId", id, date, endDate, formData.id, setDriverBasesList); }}
+                      onRemove={async (id) => { if (formData.id) await deleteSubEntityById("DriversBase", id, formData.id, setDriverBasesList); }}
                       getLookupDisplay={(row) => getLookupDisplay(locationGroups, "locationGroupId", row)}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="fleets" className="pt-2">
-                    <SubEntityTable
-                      items={(formData.driverFleets || []) as Record<string, unknown>[]}
-                      lookupItems={fleetGroups || []}
-                      lookupKey="fleetGroupId"
-                      lookupLabel={t("driver.fleets")}
-                      t={t}
-                      onAdd={(id, date) => addSubEntity("driverFleets", "fleetGroupId", id, date)}
-                      onRemove={(i) => removeSubEntity("driverFleets", i)}
-                      onUpdateEndDate={(i, date) => updateSubEntityEndDate("driverFleets", i, date)}
-                      getLookupDisplay={(row) => getLookupDisplay(fleetGroups, "fleetGroupId", row)}
                     />
                   </TabsContent>
 
                   <TabsContent value="positions" className="pt-2">
                     <SubEntityTable
-                      items={(formData.driverPositions || []) as Record<string, unknown>[]}
+                      items={driverPositionsList}
                       lookupItems={positions || []}
                       lookupKey="positionId"
                       lookupLabel={t("driver.positions")}
                       t={t}
-                      onAdd={(id, date) => addSubEntity("driverPositions", "positionId", id, date)}
-                      onRemove={(i) => removeSubEntity("driverPositions", i)}
-                      onUpdateEndDate={(i, date) => updateSubEntityEndDate("driverPositions", i, date)}
+                      driverId={formData.id}
+                      onAdd={async (id, date, endDate) => { if (formData.id) await saveSubEntity("DriversPosition", "positionId", id, date, endDate, formData.id, setDriverPositionsList); }}
+                      onRemove={async (id) => { if (formData.id) await deleteSubEntityById("DriversPosition", id, formData.id, setDriverPositionsList); }}
                       getLookupDisplay={(row) => getLookupDisplay(positions, "positionId", row)}
                     />
                   </TabsContent>
 
                   <TabsContent value="licenses" className="pt-2">
-                    <p className="text-xs text-muted-foreground py-4 italic">{t("driver.licensesAndCoursesPlaceholder")}</p>
+                    <div className="space-y-3">
+                      {formData.id && (
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.licenses")}</Label>
+                            <Select value={newLicenseId} onValueChange={setNewLicenseId}>
+                              <SelectTrigger className="h-9 text-xs">
+                                <SelectValue placeholder={t("common.search") + "..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(licenses || [])
+                                  .sort((a, b) => (a.code || "").localeCompare(b.code || ""))
+                                  .map((li) => (
+                                    <SelectItem key={li.id} value={li.id} className="text-xs">
+                                      {li.code}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.startDate")}</Label>
+                            <DatePickerField
+                              value={newLicenseStart ? `${newLicenseStart}T00:00:00` : null}
+                              onChange={(v) => setNewLicenseStart(v ? v.substring(0, 10) : todayISO())}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.endDate")}</Label>
+                            <DatePickerField
+                              value={newLicenseEnd ? `${newLicenseEnd}T00:00:00` : null}
+                              onChange={(v) => setNewLicenseEnd(v ? v.substring(0, 10) : "")}
+                              className="h-9"
+                            />
+                          </div>
+                          <Button size="sm" variant="outline" className="h-9" onClick={saveDriverLicense} disabled={!newLicenseId || !newLicenseStart}>
+                            <Plus className="h-3.5 w-3.5 mr-1" />{t("common.new")}
+                          </Button>
+                        </div>
+                      )}
+                      {!formData.id && (
+                        <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>
+                      )}
+                      {driverLicenses.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">{t("common.noResults")}</p>
+                      ) : (
+                        <div className="overflow-auto rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="text-xs">{t("driver.licenses")}</TableHead>
+                                <TableHead className="text-xs w-[180px]">{t("driver.startDate")}</TableHead>
+                                <TableHead className="text-xs w-[180px]">{t("driver.endDate")}</TableHead>
+                                <TableHead className="text-xs w-12"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {driverLicenses.map((dl) => (
+                                <TableRow key={dl.id}>
+                                  <TableCell className="text-xs">{dl.license?.code || (licenses || []).find(l => l.id === dl.licenseId)?.code || "--"}</TableCell>
+                                  <TableCell className="text-xs">{formatDate(dl.startDate)}</TableCell>
+                                  <TableCell className="text-xs">{formatDate(dl.endDate)}</TableCell>
+                                  <TableCell className="text-xs text-center">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => dl.id && deleteDriverLicense(dl.id)}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="courses" className="pt-2">
+                    <SubEntityTable
+                      items={driverCoursesList}
+                      lookupItems={courses || []}
+                      lookupKey="courseId"
+                      lookupLabel={t("driver.courses")}
+                      t={t}
+                      driverId={formData.id}
+                      onAdd={async (id, date, endDate) => { if (formData.id) await saveSubEntity("DriverCourse", "courseId", id, date, endDate, formData.id, setDriverCoursesList); }}
+                      onRemove={async (id) => { if (formData.id) await deleteSubEntityById("DriverCourse", id, formData.id, setDriverCoursesList); }}
+                      getLookupDisplay={(row) => getLookupDisplay(courses, "courseId", row)}
+                      extraColumns={[{
+                        header: "Tipo de Restrição",
+                        render: (row) => {
+                          const courseId = String(row.courseId ?? "");
+                          const course = courses?.find((c) => String(c.id) === courseId);
+                          const rawType = (course as any)?.restrictionType ?? (course as any)?.typeRestriction;
+                          const typeVal = Number(rawType);
+                          const labels: Record<number, string> = { 0: "Sem restrição", 1: "Alerta", 2: "Bloqueio" };
+                          return Number.isNaN(typeVal) ? "--" : (labels[typeVal] ?? "--");
+                        },
+                        width: "160px",
+                      }]}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="vacations" className="pt-2">
+                    <VacationTable
+                      items={driverVacationsList}
+                      t={t}
+                      driverId={formData.id}
+                      onAdd={async (startDate, endDate) => {
+                        if (!formData.id) return;
+                        if (endDate && endDate < startDate) {
+                          toast({ title: t("driverVacation.startAfterEnd"), variant: "destructive" });
+                          return;
+                        }
+                        const payload = { driverId: formData.id, startDate, endDate };
+                        const res = await fetch(`${API_BASE}/DriversVacation`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(payload),
+                        });
+                        if (!res.ok) throw new Error(`API error: ${res.status}`);
+                        toast({ title: t("common.saveSuccess"), variant: "success" });
+                        await fetchSubEntities("DriversVacation", formData.id, setDriverVacationsList);
+                      }}
+                      onRemove={async (id) => {
+                        if (!formData.id) return;
+                        await deleteSubEntityById("DriversVacation", id, formData.id, setDriverVacationsList);
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="fleets" className="pt-2">
+                    <SubEntityTable
+                      items={driverFleetsList}
+                      lookupItems={fleetGroups || []}
+                      lookupKey="fleetGroupId"
+                      lookupLabel={t("driver.fleets")}
+                      t={t}
+                      driverId={formData.id}
+                      onAdd={async (id, date, endDate) => { if (formData.id) await saveSubEntity("DriversFleet", "fleetGroupId", id, date, endDate, formData.id, setDriverFleetsList); }}
+                      onRemove={async (id) => { if (formData.id) await deleteSubEntityById("DriversFleet", id, formData.id, setDriverFleetsList); }}
+                      getLookupDisplay={(row) => getLookupDisplay(fleetGroups, "fleetGroupId", row)}
+                    />
                   </TabsContent>
 
                   <TabsContent value="dedicatedLines" className="pt-2">
-                    <p className="text-xs text-muted-foreground py-4 italic">{t("driver.dedicatedLinesPlaceholder")}</p>
+                    <div className="space-y-3">
+                      {formData.id && (
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.dedicatedLines")}</Label>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                className="h-9 text-xs flex-1"
+                                value={newDedicatedLineLabel}
+                                readOnly
+                                placeholder={t("common.search") + "..."}
+                                onClick={() => setDedicatedLineModalOpen(true)}
+                              />
+                              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setDedicatedLineModalOpen(true)}>
+                                <Search className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.startDate")}</Label>
+                            <DatePickerField
+                              value={newDedicatedLineStart ? `${newDedicatedLineStart}T00:00:00` : null}
+                              onChange={(v) => setNewDedicatedLineStart(v ? v.substring(0, 10) : todayISO())}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("driver.endDate")}</Label>
+                            <DatePickerField
+                              value={newDedicatedLineEnd ? `${newDedicatedLineEnd}T00:00:00` : null}
+                              onChange={(v) => setNewDedicatedLineEnd(v ? v.substring(0, 10) : "")}
+                              className="h-9"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9"
+                            disabled={!newDedicatedLineId}
+                            onClick={async () => {
+                              if (!formData.id || !newDedicatedLineId) return;
+                              try {
+                                await saveSubEntity(
+                                  "DriversDedicatedRoute",
+                                  "lineId",
+                                  newDedicatedLineId,
+                                  `${newDedicatedLineStart}T00:00:00`,
+                                  newDedicatedLineEnd ? `${newDedicatedLineEnd}T00:00:00` : null,
+                                  formData.id,
+                                  setDriverDedicatedRoutesList
+                                );
+                                setNewDedicatedLineId("");
+                                setNewDedicatedLineLabel("");
+                                setNewDedicatedLineStart(todayISO());
+                                setNewDedicatedLineEnd("");
+                              } catch (err: unknown) {
+                                toast({ title: "Erro", description: (err as Error).message, variant: "error" });
+                              }
+                            }}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />{t("common.new")}
+                          </Button>
+                        </div>
+                      )}
+                      {!formData.id && (
+                        <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>
+                      )}
+                      {driverDedicatedRoutesList.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">{t("common.noResults")}</p>
+                      ) : (
+                        <div className="overflow-auto rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="text-xs">{t("driver.dedicatedLines")}</TableHead>
+                                <TableHead className="text-xs w-[180px]">{t("driver.startDate")}</TableHead>
+                                <TableHead className="text-xs w-[180px]">{t("driver.endDate")}</TableHead>
+                                <TableHead className="text-xs w-12"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {driverDedicatedRoutesList.map((row, i) => (
+                                <TableRow key={row.id || i}>
+                                  <TableCell className="text-xs">
+                                    {(row as any).line?.code || (row as any).lineCode || (row as any).lineId || "--"}
+                                  </TableCell>
+                                  <TableCell className="text-xs">{formatDate(row.startDate)}</TableCell>
+                                  <TableCell className="text-xs">{formatDate(row.endDate)}</TableCell>
+                                  <TableCell className="text-xs text-center">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        if (row.id && formData.id)
+                                          deleteSubEntityById("DriversDedicatedRoute", row.id, formData.id, setDriverDedicatedRoutesList);
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Line Search Modal */}
+                    <LineSearchModal
+                      open={dedicatedLineModalOpen}
+                      onOpenChange={setDedicatedLineModalOpen}
+                      onSelect={(id, item) => {
+                        setNewDedicatedLineId(id);
+                        setNewDedicatedLineLabel(item?.code ? `${item.code}` : id);
+                        setDedicatedLineModalOpen(false);
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="messages" className="pt-2">
+                    <ReadOnlySubEntityTable
+                      items={driverMessagesList}
+                      t={t}
+                      driverId={formData.id}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="occurrences" className="pt-2">
+                    {!formData.id ? (
+                      <p className="text-xs text-muted-foreground py-2 italic">{t("driver.fillRequiredFirst")}</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Add form */}
+                        <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">{t("driverOccurrence.date")}</Label>
+                              <DatePickerField value={occDtOccurrence} onChange={setOccDtOccurrence} className="h-9" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">{t("driverOccurrence.responsible")}</Label>
+                              <Input value={occResponsible} onChange={(e) => setOccResponsible(e.target.value.toUpperCase())} className="h-9 text-xs" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                              <div className="flex items-center gap-2 rounded-md border px-2 h-9">
+                                <Label className="text-xs">{t("driverOccurrence.warning")}</Label>
+                                <Switch checked={occWarningFlag} onCheckedChange={setOccWarningFlag} />
+                              </div>
+                              <Button size="sm" variant="outline" className="h-9" onClick={async () => {
+                                if (!occDtOccurrence || !formData.id) return;
+                                setOccSaving(true);
+                                try {
+                                  const res = await fetch(`${API_BASE}/DriversOccurrence`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      driverId: formData.id,
+                                      dtOccurrence: occDtOccurrence,
+                                      description: occDescription,
+                                      responsible: occResponsible,
+                                      warningFlag: occWarningFlag,
+                                    }),
+                                  });
+                                  if (!res.ok) throw new Error("Erro");
+                                  toast({ title: t("common.saveSuccess"), variant: "success" });
+                                  setOccDtOccurrence(`${todayISO()}T00:00:00`);
+                                  setOccDescription("");
+                                  setOccResponsible("");
+                                  setOccWarningFlag(true);
+                                  fetchSubEntities("DriversOccurrence", formData.id, setDriverOccurrencesList);
+                                } catch (err: unknown) {
+                                  toast({ title: "Erro", description: (err as Error).message, variant: "error" });
+                                } finally {
+                                  setOccSaving(false);
+                                }
+                              }} disabled={!occDtOccurrence || occSaving}>
+                                {occSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}{t("common.new")}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{t("common.description")}</Label>
+                            <Textarea value={occDescription} onChange={(e) => setOccDescription(e.target.value)} className="min-h-[60px] text-xs" placeholder={t("driverOccurrence.descriptionPlaceholder")} />
+                          </div>
+                        </div>
+
+                        {/* Table */}
+                        {driverOccurrencesList.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-2">{t("common.noResults")}</p>
+                        ) : (
+                          <div className="overflow-auto rounded-md border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/50">
+                                  <TableHead className="text-xs w-[120px]">{t("driverOccurrence.date")}</TableHead>
+                                  <TableHead className="text-xs">{t("driverOccurrence.responsible")}</TableHead>
+                                  <TableHead className="text-xs">{t("common.description")}</TableHead>
+                                  <TableHead className="text-xs w-[80px] text-center">{t("driverOccurrence.warning")}</TableHead>
+                                  <TableHead className="text-xs w-12"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {driverOccurrencesList.map((row, i) => (
+                                  <TableRow key={row.id || i}>
+                                    <TableCell className="text-xs">{formatDate(row.dtOccurrence as string)}</TableCell>
+                                    <TableCell className="text-xs">{(row.responsible as string) || "--"}</TableCell>
+                                    <TableCell className="text-xs">
+                                      <div className="flex items-center gap-1">
+                                        <span className="truncate max-w-[180px]">{(row.description as string) || "--"}</span>
+                                        {row.description && (
+                                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => { setOccDescDialogContent(row.description as string); setOccDescDialogOpen(true); }}>
+                                            <Eye className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-center">
+                                      {(row.warningFlag as boolean) ? (
+                                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mx-auto" />
+                                      ) : (
+                                        <span className="text-muted-foreground">--</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-center">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={async () => {
+                                        if (!row.id || !formData.id) return;
+                                        try {
+                                          await deleteSubEntityById("DriversOccurrence", row.id, formData.id, setDriverOccurrencesList);
+                                        } catch (err: unknown) {
+                                          toast({ title: "Erro", description: (err as Error).message, variant: "error" });
+                                        }
+                                      }}>
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+
+                        {/* Description dialog */}
+                        <Dialog open={occDescDialogOpen} onOpenChange={setOccDescDialogOpen}>
+                          <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                              <DialogTitle className="text-sm">{t("driverOccurrence.descriptionDetail")}</DialogTitle>
+                            </DialogHeader>
+                            <div className="text-sm whitespace-pre-wrap border rounded-md p-3 bg-muted/30 max-h-[400px] overflow-auto">
+                              {occDescDialogContent}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </div>
@@ -999,7 +1655,7 @@ const DriverPage = () => {
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">{t("menu.locationGroup")}</Label>
+          <Label className="text-xs">{t("driver.driverBase")}</Label>
           <Select value={filters.locationGroupId} onValueChange={(v) => setFilters((p) => ({ ...p, locationGroupId: v }))}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder={loadingLG ? t("common.loading") : t("common.selectAll")} />

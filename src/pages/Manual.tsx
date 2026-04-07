@@ -73,25 +73,60 @@ const manualData: ManualGroup[] = [
         name: "SIGLA Cargo",
         route: "-",
         objective:
-          "O SIGLA Cargo (Sistema Integrado de Gestão e Logística Avançada) é uma plataforma completa desenvolvida pela LATOP Tecnologia da Informação Ltda para otimizar operações de transporte, coordenação de frota e planejamento logístico.",
+          "O SIGLA Cargo (Sistema Integrado de Gestão e Logística Avançada) é uma plataforma completa desenvolvida pela LATOP Tecnologia da Informação Ltda para otimizar operações de transporte, coordenação de frota e planejamento logístico. " +
+          "O sistema gerencia toda a operação do transporte de carga, atuando na escala dos motoristas desde o planejamento — com a atribuição de demandas ou atividades —, acompanhando a execução em tempo real e gerando dados estatísticos, tudo em conformidade com a legislação vigente da Lei do Motorista.",
         extra:
           "Principais recursos do sistema:\n\n" +
           "• Dashboard Interativo — KPIs em tempo real com gráficos de status e tendências de viagens.\n" +
           "• Coordenação de Viagens — Gráfico de Gantt com 3 camadas (Planejado, Realizado e Parada) para visualização completa das operações.\n" +
           "• Monitoramento — Acompanhamento de partidas, chegadas e liberação de viagens em tempo real.\n" +
-          "• Escala de Motoristas — Gestão de solicitações, escalas e publicação de jornadas.\n" +
-          "• Planejamento — Modelos de planejamento, cenários e otimização de rotas.\n" +
-          "• Importações — Upload de viagens planejadas e mapas logísticos.\n" +
+          "• Escala de Motoristas — Gestão de solicitações, circuitos, férias, treinamentos e publicação de jornadas conforme a legislação.\n" +
+          "• Planejamento — Modelos de planejamento, cenários, otimização de rotas e planejamento de veículos.\n" +
+          "• Importações — Upload de demandas logísticas e mapas de operação.\n" +
           "• Cadastros — Mais de 25 telas de cadastro auxiliar com CRUD completo (Criar, Ler, Atualizar, Excluir).\n" +
-          "• Relatórios — Geração de relatórios operacionais e gerenciais.\n\n" +
+          "• Relatórios — Geração de relatórios operacionais e gerenciais com parâmetros dinâmicos.\n\n" +
           "Recursos técnicos:\n\n" +
           "• Sistema de abas internas com até 5 telas simultâneas e preservação de estado.\n" +
           "• Suporte multi-idioma: Português, Inglês e Espanhol.\n" +
           "• Tema claro e escuro.\n" +
           "• Exportação de dados em Excel (.xlsx) e PDF.\n" +
           "• Filtros avançados com pesquisa server-side e busca local.\n" +
+          "• Pesquisas avançadas de Motorista, Veículo, Atividade, Localidade e Linha com modais dedicados.\n" +
           "• Campos com validação visual, conversão automática de maiúsculas e lookups inteligentes.\n\n" +
           "Desenvolvido por: LATOP Tecnologia da Informação Ltda.",
+      },
+    ],
+  },
+  {
+    group: "Dashboard",
+    screens: [
+      {
+        name: "Dashboard",
+        route: "/dashboard",
+        objective:
+          "Painel de controle central do sistema que apresenta uma visão consolidada de toda a operação de transporte em tempo real. " +
+          "Concentra indicadores-chave de desempenho (KPIs), gráficos analíticos e uma tabela de próximas partidas, " +
+          "permitindo ao gestor acompanhar o andamento das viagens sem navegar entre múltiplas telas.",
+        filters:
+          "Data de Referência (navegação por dia com setas ◀ ▶) e Grupo de Localidade (botões de filtro carregados da API). " +
+          "O filtro 'Todas' exibe dados consolidados de todos os grupos. A seleção de um grupo específico restringe todos os indicadores e gráficos.",
+        extra:
+          "KPIs Principais (cartões no topo):\n\n" +
+          "• Viagens Hoje — Total de viagens planejadas para a data selecionada.\n" +
+          "• Em Execução — Quantidade de viagens atualmente em trânsito.\n" +
+          "• Motoristas Escalados — Número de motoristas únicos com viagens atribuídas.\n" +
+          "• Veículos em Operação — Número de veículos únicos em uso.\n" +
+          "• Atrasadas — Viagens com atraso identificado.\n\n" +
+          "Gráficos e Indicadores:\n\n" +
+          "• Status do Dia (gráfico de rosca) — Distribuição visual das viagens por status: Planejadas, Em Execução, Concluídas, Atrasadas e Canceladas.\n" +
+          "• Taxas de Performance (barras horizontais) — Pontualidade (onTimeRate), Conclusão (completionRate) e Cancelamentos (cancelRate).\n" +
+          "• Tendência de Viagens (gráfico de barras) — Quantidade de viagens dos últimos 7 dias, permitindo identificar tendências e variações.\n" +
+          "• Justificativas por Setor — Distribuição das justificativas de atraso/cancelamento por setor responsável.\n\n" +
+          "Tabela de Próximas Saídas:\n\n" +
+          "Exibe as viagens com partida programada mais próxima, com colunas: Horário Planejado, Demanda, Origem, Destino, Placa, Motorista e Status.\n\n" +
+          "Comportamento de Carregamento:\n\n" +
+          "O Dashboard utiliza a lógica 'Load on Demand': na primeira visita da sessão, os dados são carregados apenas após o clique manual no botão 'Atualizar'. " +
+          "Após essa ativação, a atualização automática é habilitada e as visitas subsequentes na mesma sessão carregam os dados automaticamente.",
       },
     ],
   },
@@ -107,12 +142,6 @@ const manualData: ManualGroup[] = [
           "Após o login, o usuário é redirecionado ao Dashboard. Em caso de falha, uma mensagem de erro é exibida.",
       },
       {
-        name: "Dashboard",
-        route: "/dashboard",
-        objective:
-          "Apresentar uma visão geral do sistema com KPIs em tempo real: Viagens Hoje, Veículos, Motoristas e Localidades cadastrados. Inclui gráficos de distribuição de status (pizza) e tendência de viagens (área), além de uma tabela com as últimas viagens.",
-      },
-      {
         name: "Navegação e Abas",
         route: "-",
         objective:
@@ -123,6 +152,26 @@ const manualData: ManualGroup[] = [
         route: "-",
         objective:
           "Em todas as telas de cadastro, o botão 'Pesquisar' sempre realiza uma nova consulta à API, mesmo que os filtros não tenham sido alterados. Isso garante que os dados exibidos estejam sempre atualizados.",
+      },
+      {
+        name: "Padrão de Filtros nas Telas",
+        route: "-",
+        objective:
+          "As telas do sistema possuem diferentes níveis de filtro de pesquisa:\n\n" +
+          "• Telas sem filtro — Algumas telas de cadastro não possuem campos de filtro. O usuário clica diretamente em 'Pesquisar' para carregar a lista completa de registros. " +
+          "Após o carregamento, é possível usar o campo 'Filtrar resultados' na barra de ferramentas para busca local em todas as colunas.\n\n" +
+          "• Telas com filtros simples — Possuem um ou mais campos de filtro (texto, seleção, data) que são enviados ao servidor para refinar a consulta antes do carregamento.\n\n" +
+          "• Telas com filtros avançados — Além dos filtros padrão, oferecem pesquisas avançadas com modais dedicados (Motorista, Veículo, Localidade, Atividade, Linha) " +
+          "que permitem buscar por múltiplos critérios simultaneamente.",
+      },
+      {
+        name: "Campos Obrigatórios",
+        route: "-",
+        objective:
+          "Em toda a aplicação, campos e filtros obrigatórios são identificados com um asterisco vermelho (✱) ao lado do rótulo. " +
+          "O sistema impede o salvamento ou a pesquisa caso campos obrigatórios não estejam preenchidos. " +
+          "Além disso, em formulários e filtros com intervalos de datas, o sistema valida que a Data Início seja menor ou igual à Data Fim, " +
+          "bloqueando a operação com uma mensagem de erro caso contrário.",
       },
     ],
   },
@@ -144,12 +193,31 @@ const manualData: ManualGroup[] = [
           "Duplo clique em uma viagem no Gantt ou na listagem abre o painel lateral de edição com todos os campos preenchidos.",
         deletion:
           "A exclusão é feita pelo ícone de lixeira no painel de edição, com confirmação obrigatória.",
+        extra:
+          "Pesquisa Avançada de Veículo:\n\n" +
+          "O campo de Veículo utiliza pesquisa avançada (ícone de lupa) que permite buscar por Placa e Código de Frota. " +
+          "A seleção exibe Placa - Cód. Frota no campo.\n\n" +
+          "A tela também permite criação de novas viagens diretamente pelo diálogo '+' com campos de Demanda, Placa (pesquisa avançada de veículo), " +
+          "Origem e Destino (pesquisa avançada de localidade), horários planejados e tipo de viagem.",
       },
       {
-        name: "Planejamento de Viagens",
+        name: "Coordenação de Viagens",
         route: "/daily-trips-schedule",
         objective:
-          "Visualizar e gerenciar o cronograma de viagens em formato tabular com filtros por período e status.",
+          "Visualizar e gerenciar o cronograma de viagens em formato Gantt interativo e listagem tabular, com filtros por período, grupo de frota, grupo de localidade e placas.",
+        filters:
+          "Data Início (obrigatório), Data Fim (obrigatório), Grupo de Frota (multi-seleção), Grupo de Localidade (dropdown), Placas (multi-seleção) e Demanda. Período máximo de 7 dias.",
+        listing:
+          "Gráfico de Gantt com veículos por linha e barras coloridas representando viagens planejadas, paradas e execução real. " +
+          "Visão de lista com colunas: Demanda, Placa, Origem, Destino, Horários Planejados/Reais e Status.",
+        creation:
+          "Botão '+' para criar nova viagem com formulário completo.",
+        edition:
+          "Duplo clique na barra do Gantt ou na linha da tabela abre o painel lateral de edição.",
+        extra:
+          "• Suporte a zoom no Gantt (6h, 12h, 24h).\n" +
+          "• Paginação server-side com seletor de registros por página.\n" +
+          "• Exportação de dados em Excel e PDF.",
       },
     ],
   },
@@ -157,20 +225,40 @@ const manualData: ManualGroup[] = [
     group: "Monitoramento",
     screens: [
       {
-        name: "Partidas e Chegadas",
+        name: "Chegadas e Partidas",
         route: "/departures-and-arrivals",
         objective:
-          "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
+          "Acompanhar em tempo real as chegadas e partidas de veículos em formato de painel de aeroporto (split-screen).",
+        filters:
+          "Localidade (seletor com busca), aplicado automaticamente ao painel de chegadas e partidas.",
+        listing:
+          "Painel dividido em duas seções:\n" +
+          "• Chegadas (esquerda, tema azul) — Hora, Data, Localidade de Origem, Placa, Cód. Frota, Motorista e Status.\n" +
+          "• Partidas (direita, tema âmbar) — Hora, Data, Localidade de Destino, Placa, Cód. Frota, Motorista e Status.",
+        extra:
+          "• Lógica de cores por status: Vermelho (Atrasado > 15min), Amarelo (Atenção < 1h), Verde (Saiu - DEP) e Cinza (Chegou - ARR).\n" +
+          "• Autoatualização a cada 5 minutos.\n" +
+          "• Modo tela cheia (botão Expandir/Compactar).\n" +
+          "• Adaptação dinâmica ao tema claro/escuro do sistema.",
       },
       {
         name: "Liberação de Viagens",
         route: "/release-driver",
         objective:
-          "Consultar e liberar viagens para execução. Permite aprovar viagens pendentes e gerenciar o checklist de liberação.",
+          "Consultar e liberar viagens para execução. Combina checklist de verificação com formulário de liberação do motorista e veículo.",
         filters:
-          "Data da Viagem (obrigatório) e Local de Saída (obrigatório). Os filtros devem ser preenchidos antes da pesquisa.",
+          "Data da Viagem (obrigatório) e Local de Saída (obrigatório, com busca por nome). Os filtros devem ser preenchidos antes da pesquisa.",
         listing:
-          "Exibe as viagens com colunas de demanda, placa, motorista, origem, destino e status (Pendente/Liberado) com badges coloridos.",
+          "Exibe as viagens com colunas: Demanda, Placa, Motorista, Origem, Destino, Horários (Planejado/Real) e Status (badges coloridos).",
+        extra:
+          "Fluxo de Liberação em duas etapas:\n\n" +
+          "1. Checklist — Botão 'Check' (azul pulsante quando pendente, verde quando concluído). Abre formulário com dados planejados " +
+          "(campos somente leitura com fundo azul claro) e campos de execução. Botão de cópia rápida transfere dados planejados para execução.\n\n" +
+          "2. Liberação — Botão 'Liberar' (disponível após checklist). Formulário de liberação com dados do motorista e veículo. " +
+          "Após liberação, o botão assume tom neutro com texto 'Liberado'.\n\n" +
+          "• Layout paisagem (920px) com campos em grid.\n" +
+          "• Exportação em Excel disponível na barra de ferramentas.\n" +
+          "• A pesquisa avançada de Motorista utiliza o modo 'forceActiveOnly' (apenas motoristas ativos).",
       },
     ],
   },
@@ -180,20 +268,82 @@ const manualData: ManualGroup[] = [
       {
         name: "Solicitação de Motoristas",
         route: "/drivers-request",
-        objective: "Registrar e gerenciar solicitações de motoristas para viagens específicas.",
+        objective: "Registrar e gerenciar solicitações de motoristas para atividades específicas.",
+        filters: "Data Inicial (obrigatório), Data Final (obrigatório), Grupo de Localidade, Grupo de Frota, Motorista (pesquisa avançada), Atividade e Status. Período padrão: D-0 até D+30, máximo de 60 dias. O filtro de Status inicia em 'Pendente' por padrão.",
+        listing: "Exibe Data Solicitada, Motorista (com tooltip de Base e Frotas), Atividade, Programação (horário início-fim), Observação, Data do Pedido e Status com badges coloridos (amarelo=Pendente, verde=Aprovado, vermelho=Negado). Colunas ordenáveis por clique no cabeçalho.",
+        extra:
+          "• Ações de Aprovação/Negação — Botões sempre visíveis na coluna Ações para solicitações com status Pendente.\n" +
+          "• Confirmação via diálogo — Ao aprovar ou negar, uma caixa de confirmação é exibida antes de efetivar a ação.\n" +
+          "• Exportação — Dados exportáveis em Excel (.xlsx) e PDF com descrição dos filtros aplicados.\n" +
+          "• Paginação server-side com seletor de registros por página (10, 20, 50, 100).",
       },
       {
         name: "Circuitos de Motoristas",
         route: "/drivers-schedule",
         objective: "Gestão de circuitos de motoristas com Gráfico de Gantt interativo e painel de edição de circuitos.",
-        filters: "Data Início, Data Fim, Grupo de Localidade, Motorista",
+        filters: "Data Início, Data Fim, Grupo de Localidade, Motorista (pesquisa avançada com 'forceActiveOnly').",
         extra:
           "• Gráfico de Gantt com visualização de circuitos por motorista e período.\n" +
           "• Painel de edição flutuante com cabeçalho (Código, Status, datas planejadas e reais) e tabela de tarefas (viagens e atividades).\n" +
-          "• Adição de viagens (com busca por DT e retorno automático) e atividades (com busca por tipo de atividade).\n" +
+          "• Adição de viagens (com busca por DT e retorno automático) e atividades (com pesquisa avançada por tipo de atividade).\n" +
           "• Modal de detalhe da viagem em layout master-detail: metadados no topo e tabela de seções (trechos) na parte inferior.\n" +
           "• Filtros secundários em resultados: por STO/DT ou Código/Tipo de Atividade.\n" +
           "• Painel de viagens sem motorista com filtros internos, ordenação e paginação.",
+      },
+      {
+        name: "Férias de Motoristas",
+        route: "/driver-vacation",
+        objective: "Gerenciar férias planejadas de motoristas com listagem por período e status (Em Andamento, Prevista, Encerrada).",
+        filters: "Data de Referência (obrigatório) e Base de Motorista (opcional). A busca de motorista utiliza a pesquisa avançada com Nome de Escala, Cód. GPID, CPF, Base e Grupo de Frota.",
+        listing: "Exibe Motorista, CPF, Base, Data Início, Data Fim e Status com badges coloridos (verde=Em Andamento, azul=Prevista, cinza=Encerrada).",
+        creation: "Formulário com Motorista (pesquisa avançada com 'forceActiveOnly'), Data Início e Data Fim.",
+        edition: "Clique no registro abre o painel de edição.",
+        deletion: "Ícone de lixeira com confirmação.",
+      },
+      {
+        name: "Treinamento de Motoristas",
+        route: "/training-class",
+        objective: "Gerenciar turmas de treinamento com motoristas vinculados, atividades e localidades.",
+        filters: "Data de Referência e busca por nome da turma.",
+        listing: "Exibe Nome da Turma, Instrutor, Atividade, Localidade, Período e quantidade de Motoristas.",
+        creation: "Formulário com Nome, Descrição, Período, Instrutor, Atividade (pesquisa avançada) e Localidade (pesquisa avançada). Após salvar, permite adicionar motoristas à turma.",
+        extra: "• Pesquisa avançada de Atividade com filtro por Tipo de Atividade e toggle Ativo.\n" +
+          "• Pesquisa avançada de Localidade com filtros por Código, Nome, Grupo de Localidade, Tipo de Localidade e Cód. TMS.\n" +
+          "• Pesquisa avançada de Motorista com filtros por Nome de Escala, Cód. GPID, Base e Grupo de Frota.\n" +
+          "• Atribuição de curso ao motorista diretamente pela turma.",
+      },
+      {
+        name: "Ocorrências de Motoristas",
+        route: "/driver-occurrence",
+        objective: "Registrar ocorrências e advertências de motoristas.",
+        filters: "Data de Referência e busca por motorista.",
+        listing: "Exibe Motorista, Data da Ocorrência, Responsável, Advertência e Descrição.",
+        creation: "Formulário com Data, Motorista (pesquisa avançada), Responsável, Advertência (Sim/Não) e Descrição.",
+        edition: "Clique no registro abre o painel de edição.",
+      },
+      {
+        name: "Documentos do Motorista",
+        route: "/driver-documents",
+        objective: "Gerenciar documentos obrigatórios e informativos enviados aos motoristas, com controle de validade, upload de arquivos, envio em massa e rastreamento de leitura.",
+        filters: "Nome do Documento, Status (Ativo, A Vencer, Vencido, Rascunho) e Obrigatório (Sim/Não).",
+        listing: "Exibe Nome, Obrigatório (Sim/Não), Emissão, Validade, Arquivo, Tamanho, Enviados, Lidos, % Leitura e Status com badges coloridos.",
+        creation: "Formulário com Nome, Descrição, Toggle de Obrigatoriedade, Data de Emissão, Data de Validade e Upload de arquivo (drag-and-drop, aceita PDF, DOC, XLS).",
+        edition: "Clique no ícone de edição abre o painel com os campos preenchidos.",
+        deletion: "Ícone de lixeira com confirmação obrigatória.",
+        extra:
+          "KPIs no topo da tela:\n\n" +
+          "• Total de Documentos — Quantidade total de documentos cadastrados.\n" +
+          "• Ativos — Documentos com status ativo.\n" +
+          "• A Vencer (30 dias) — Documentos próximos do vencimento.\n" +
+          "• Taxa Média de Leitura — Percentual médio de leitura entre documentos enviados.\n\n" +
+          "Envio em Massa:\n\n" +
+          "• Botão 'Enviar' no documento permite enviar para todos os motoristas ou filtrar por base.\n" +
+          "• Após envio, o status do documento é atualizado para 'Ativo'.\n\n" +
+          "Detalhes e Rastreamento:\n\n" +
+          "• Botão 'Visualizar' abre painel com resumo do documento e barra de progresso de leitura.\n" +
+          "• Tabela de destinatários com colunas: Motorista, CPF, Base, Data de Envio, Data de Leitura e Status.\n" +
+          "• Filtro de destinatários por status (Todos, Lidos, Enviados, Pendentes).\n\n" +
+          "Exportação de dados em Excel (.xlsx) e PDF disponível na barra de ferramentas.",
       },
       {
         name: "Publicação de Jornada",
@@ -203,13 +353,28 @@ const manualData: ManualGroup[] = [
     ],
   },
   {
-    group: "Importações",
+    group: "Frequência de Localidade",
     screens: [
       {
-        name: "Importação de Viagens Planejadas",
-        route: "/import-trips",
-        objective: "Importar viagens planejadas a partir de arquivos externos para alimentar o planejamento.",
+        name: "Frequência de Localidade",
+        route: "/location-frequency",
+        objective: "Cadastrar e gerenciar as faixas horárias de carga e descarga por localidade e dia da semana.",
+        filters: "Localidade (obrigatório, pesquisa avançada com LookupSearchField via modal).",
+        listing: "Após pesquisar, exibe abas por dia da semana (Seg a Dom) com resumo de capacidade de carga (C) e descarga (D). Ao selecionar um dia, lista as faixas horárias com Início, Fim, Carga e Descarga.",
+        creation: "Formulário inline na parte inferior da tabela com seletores de hora (Início/Fim) e campos numéricos para Carga e Descarga.",
+        edition: "Edição inline dos campos de Carga e Descarga diretamente na tabela.",
+        deletion: "Ícone de lixeira com confirmação obrigatória.",
+        extra:
+          "• Toolbar com botões Pesquisar, Limpar e Novo.\n" +
+          "• Resumo visual por dia com badges de capacidade total.\n" +
+          "• Validação de horário: início deve ser anterior ao fim.\n" +
+          "• Atualização automática via API após adição ou exclusão.",
       },
+    ],
+  },
+  {
+    group: "Importações",
+    screens: [
       {
         name: "Importação de Demandas",
         route: "/import-map",
@@ -228,6 +393,37 @@ const manualData: ManualGroup[] = [
     group: "Planejamento",
     screens: [
       {
+        name: "Planejamento de Veículos",
+        route: "/vehicle-planning",
+        objective: "Cadastrar e gerenciar vínculos de planejamento entre veículos e motoristas com frequência semanal e períodos de vigência.",
+        filters: "Data de Referência (obrigatório), Grupo de Localidade (obrigatório), Grupo de Frota, Placa, Cód. Frota e Motorista (pesquisa avançada).",
+        listing: "Exibe Veículo (Placa), Cód. Frota, Motorista, Data/Hora Início, Data/Hora Fim e Frequência Semanal (Seg a Dom com indicadores visuais).",
+        creation: "Formulário com Veículo (pesquisa avançada), Motorista (pesquisa avançada), Data/Hora Início, Data/Hora Fim e checkboxes de frequência semanal (Seg a Dom).",
+        edition: "Duplo clique no registro abre o formulário de edição com os dados preenchidos.",
+        deletion: "Ícone de lixeira com confirmação.",
+        extra:
+          "• Botão 'Gerar Plan. de Veículos' para geração automática de vínculos a partir dos dados de referência.\n" +
+          "• Paginação server-side com seletor de registros por página (10, 20, 50, 100).\n" +
+          "• Exportação de dados em Excel (.xlsx) e PDF.\n" +
+          "• Colunas ordenáveis por clique no cabeçalho.",
+      },
+      {
+        name: "Planejamento Diário de Veículos",
+        route: "/daily-vehicle-assignment",
+        objective: "Gerenciar vínculos operacionais diários entre veículos e motoristas, com visualização em listagem, Gantt por Veículo e Gantt por Motorista.",
+        filters: "Data Início (obrigatório), Data Final (obrigatório), Grupo de Localidade e Veículo (busca por placa/frota).",
+        listing: "Três visualizações disponíveis via abas:\n" +
+          "• Listagem — Tabela com Veículo, Cód. Frota, Motorista, Início, Fim e ações.\n" +
+          "• Gantt Veículo — Gráfico de Gantt agrupado por veículo.\n" +
+          "• Gantt Motorista — Gráfico de Gantt agrupado por motorista.",
+        creation: "Formulário com Veículo (pesquisa avançada), Motorista (pesquisa avançada), Data/Hora Início e Data/Hora Fim.",
+        edition: "Duplo clique no registro abre o formulário de edição.",
+        deletion: "Ícone de lixeira com confirmação.",
+        extra:
+          "• Paginação server-side com seletor de registros por página.\n" +
+          "• Exportação de dados em Excel (.xlsx) e PDF.",
+      },
+      {
         name: "Modelo de Planejamento",
         route: "/planning-model",
         objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
@@ -240,11 +436,6 @@ const manualData: ManualGroup[] = [
       {
         name: "Otimização de Viagens",
         route: "/trip-optimization",
-        objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
-      },
-      {
-        name: "Planejamento de Veículos",
-        route: "/vehicle-planning",
         objective: "Pendente de liberação. Esta função será liberada em breve para o seu perfil.",
       },
     ],
@@ -261,12 +452,22 @@ const manualData: ManualGroup[] = [
       {
         name: "Relatórios",
         route: "/reports",
-        objective: "Tela centralizada para consulta e geração de relatórios operacionais e gerenciais.",
+        objective: "Tela centralizada para consulta e geração de relatórios operacionais e gerenciais com parâmetros dinâmicos.",
+        filters: "Seleção do relatório desejado (dropdown carregado da API). Parâmetros dinâmicos definidos por cada relatório (datas, códigos, textos).",
+        extra:
+          "• Tipos de saída: Visualizar (tabela em tela) ou Excel (download direto do arquivo .xlsx).\n" +
+          "• Parâmetros são gerados automaticamente com base no tipo (date, string, number) definido pelo backend.\n" +
+          "• Visualização em tela permite exportação posterior em Excel e PDF.\n" +
+          "• Colunas da tabela de resultado são geradas dinamicamente a partir dos campos retornados pela API.",
       },
       {
         name: "Parâmetros Administrativos",
         route: "/admin-parameters",
-        objective: "Configurar parâmetros globais do sistema como valores padrão e regras de negócio.",
+        objective: "Configurar parâmetros globais do sistema e gerenciar o logotipo do cliente.",
+        extra:
+          "• Listagem de parâmetros do sistema (chave, valor, descrição) carregados da API.\n" +
+          "• Upload de logotipo do cliente para personalização do sistema.\n" +
+          "• Pré-visualização da imagem antes do envio.",
       },
     ],
   },
@@ -280,13 +481,18 @@ const schemaScreenNames: Record<string, string> = {
   "/city": "Cidade",
   "/company": "Empresa",
   "/country": "País",
+  "/course": "Curso",
   "/justification": "Justificativa",
   "/fleet-brand": "Marca de Frota",
   "/fleet-model": "Modelo de Frota",
   "/fleet-group": "Grupo de Frota",
+  "/fleet-type": "Tipo de Frota",
+  "/license": "Carteira",
   "/location-group": "Grupo de Localidade",
+  "/location-type": "Tipo de Localidade",
   "/location": "Localidade",
   "/position": "Cargo de Motorista",
+  "/regulation-rule": "Regra de Regulamentação",
   "/region": "Região",
   "/responsible-sector": "Setor Responsável",
   "/state": "Estado",
@@ -294,6 +500,7 @@ const schemaScreenNames: Record<string, string> = {
   "/timezone-value": "Valor de Fuso Horário",
   "/trip-type": "Tipo de Viagem",
   "/stop-type": "Tipo de Parada",
+  "/truck": "Veículo",
 };
 
 const schemaObjectives: Record<string, string> = {
@@ -302,13 +509,18 @@ const schemaObjectives: Record<string, string> = {
   "/city": "Cadastrar e consultar cidades com vínculo a país e estado, incluindo coordenadas geográficas.",
   "/company": "Cadastrar empresas (clientes e fornecedores) com endereço e localização geográfica completa.",
   "/country": "Cadastrar países com códigos ISO (Alpha-2, Alpha-3 e Numérico).",
+  "/course": "Cadastrar cursos e capacitações técnicas para motoristas, com tipo de restrição (Sem restrição, Alerta ou Bloqueio). Os cursos ficam disponíveis na aba 'Cursos' do cadastro de motorista.",
   "/justification": "Cadastrar justificativas para atrasos e cancelamentos de viagens, vinculando ao setor responsável.",
   "/fleet-brand": "Cadastrar marcas de veículos da frota (ex: Volvo, Scania, Mercedes).",
   "/fleet-model": "Cadastrar modelos de veículos da frota, vinculando à marca correspondente.",
   "/fleet-group": "Cadastrar grupos de frota para organização e filtragem de veículos, com quantidade de demandas.",
+  "/fleet-type": "Cadastrar tipos de frota para classificação dos veículos (ex: Cavalo Mecânico, Carreta, Bitrem).",
+  "/license": "Cadastrar carteiras (habilitações) com tipo de restrição (Sem restrição, Alerta ou Bloqueio). As carteiras ficam disponíveis na aba 'Carteiras' do cadastro de motorista.",
   "/location-group": "Cadastrar grupos de localidades para agrupamento e filtragem.",
+  "/location-type": "Cadastrar tipos de localidade para classificação dos pontos logísticos (ex: Terminal, Pátio, Cliente). Inclui sinalizadores de Local de Operação e Local de Liberação.",
   "/location": "Cadastrar localidades (pontos de origem/destino) com coordenadas, códigos de integração (TMS e GPS), tipo e grupo.",
   "/position": "Cadastrar cargos de motoristas com prioridade e cor de identificação.",
+  "/regulation-rule": "Cadastrar regras de regulamentação com valores inteiros, decimais e textuais, unidade (Minutos, Dias, Semanas, Código, Marcador) e status ativo/inativo. Utilizado para controle de conformidade com a legislação.",
   "/region": "Cadastrar regiões geográficas vinculadas a países.",
   "/responsible-sector": "Cadastrar setores responsáveis utilizados em justificativas.",
   "/state": "Cadastrar estados/províncias vinculados a países e opcionalmente a regiões.",
@@ -316,6 +528,7 @@ const schemaObjectives: Record<string, string> = {
   "/timezone-value": "Cadastrar valores de fuso horário com período de vigência (início e fim).",
   "/trip-type": "Cadastrar tipos de viagem com indicação de carga e cor de identificação.",
   "/stop-type": "Cadastrar tipos de parada com tempo padrão e indicação de jornada de motorista.",
+  "/truck": "Cadastrar veículos da frota com dados de placa, modelo, marca, grupo de frota e informações operacionais.",
 };
 
 function generateSchemaScreens(): ScreenDoc[] {
@@ -374,7 +587,7 @@ function generateSchemaScreens(): ScreenDoc[] {
     const requiredFields = formFields.filter((f) => f.required).map((f) => f.label);
     const requiredNote =
       requiredFields.length > 0
-        ? `\n\nCampos obrigatórios (marcados com borda vermelha): ${requiredFields.join(", ")}.`
+        ? `\n\nCampos obrigatórios (marcados com asterisco vermelho ✱): ${requiredFields.join(", ")}.`
         : "";
 
     const creationDesc =
@@ -412,6 +625,11 @@ const customCrudScreens: ScreenDoc[] = [
     creation: "Formulário com campos de Data, Motorista (seleção), Localidade (seleção), Tipo de Atividade (seleção), Horários e observações.",
     edition: "Duplo clique no registro abre o painel de edição com os dados preenchidos.",
     deletion: "Ícone de lixeira com confirmação.",
+    extra:
+      "Pesquisa Avançada de Atividade:\n\n" +
+      "A busca avançada de atividade (ícone de lupa) permite filtrar por Código, Tipo de Atividade (dropdown dinâmico) e Status Ativo (toggle Todos/Sim/Não).\n" +
+      "Exibe colunas: Código, Descrição, Início e Fim (HH:mm), Tipo e Status.\n" +
+      "Suporta paginação com seletor de quantidade de registros (10, 20, 50, 100).",
   },
   {
     name: "Tipo de Atividade",
@@ -424,9 +642,27 @@ const customCrudScreens: ScreenDoc[] = [
     objective: "Cadastrar e gerenciar motoristas com dados pessoais, documentação e vínculos operacionais.",
     filters: "Filtros por Código, Nome e Status.",
     listing: "Exibe código, nome, CNH, categoria, validade e status do motorista.",
-    creation: "Formulário completo com dados pessoais, documentação (CNH), cargo e informações operacionais.",
-    edition: "Duplo clique no registro abre o formulário de edição.",
+    creation: "Formulário completo organizado em abas: Geral (dados pessoais), Contato (endereço, telefone, e-mail) e Detalhes (observações). As abas de sub-entidades (Atribuições, Base, Cargo, Carteiras, Cursos, Férias Planejadas, Grupo de Frota, Linhas Dedicadas, Mensagens e Ocorrências) são habilitadas após preencher os dados obrigatórios (Nome, Sobrenome, Nome de Escala e CPF).",
+    edition: "Duplo clique no registro abre o formulário de edição com todas as abas disponíveis.",
     deletion: "Ícone de lixeira com confirmação pelo nome do motorista.",
+    extra:
+      "Pesquisa Avançada de Motorista:\n\n" +
+      "A pesquisa avançada (ícone de lupa) está disponível em todas as telas do sistema que possuem campo de Motorista. " +
+      "Permite filtrar por Nome de Escala, Cód. GPID (com suporte a Ctrl+V para colar), CPF, Base de Motorista e Grupo de Frota.\n" +
+      "Exibe colunas: Nome de Escala, Cód. Integração, CPF e Status (Ativo/Inativo) com badges coloridos.\n" +
+      "Inclui toggle 'Ativo' para alternar entre motoristas Ativos e Inativos (padrão: Ativo). " +
+      "Em telas operacionais como Férias, Circuitos e Liberação, o toggle é ocultado e apenas motoristas ativos são exibidos.\n\n" +
+      "Sub-entidades do Motorista:\n\n" +
+      "• Atribuições — Vínculos de atribuição com datas de vigência.\n" +
+      "• Base — Locais de base do motorista.\n" +
+      "• Cargo — Cargos exercidos com datas de vigência.\n" +
+      "• Carteiras — Habilitações com tipo de restrição e datas de validade.\n" +
+      "• Cursos — Capacitações técnicas com tipo de restrição e validade.\n" +
+      "• Férias Planejadas — Registro de períodos de férias.\n" +
+      "• Grupo de Frota — Grupos de frota vinculados ao motorista.\n" +
+      "• Linhas Dedicadas — Rotas específicas vinculadas via pesquisa avançada de Linha.\n" +
+      "• Mensagens — Comunicações registradas para o motorista.\n" +
+      "• Ocorrências — Registro de condutas e advertências com data e responsável.",
   },
   {
     name: "Linha",
@@ -437,22 +673,11 @@ const customCrudScreens: ScreenDoc[] = [
     creation: "O formulário possui duas áreas: dados da linha (código, descrição, tipo) e a grade de seções (origem, destino, distância, tempo). Use o botão '+' na grade para adicionar seções.",
     edition: "Duplo clique na linha abre o painel completo. Seções podem ser adicionadas, editadas ou removidas.",
     deletion: "A exclusão da linha remove automaticamente todas as suas seções. Confirmação obrigatória.",
-    extra: "Função de Cópia: O botão de cópia duplica a linha com todas as seções, gerando um novo registro em modo de edição.",
-  },
-  {
-    name: "Tipo de Localidade",
-    route: "/location-type",
-    objective: "Cadastrar tipos de localidade para classificação dos pontos logísticos (ex: Terminal, Pátio, Cliente).",
-  },
-  {
-    name: "Tipo de Frota",
-    route: "/fleet-type",
-    objective: "Cadastrar tipos de frota para classificação dos veículos (ex: Cavalo Mecânico, Carreta, Bitrem).",
-  },
-  {
-    name: "Veículo",
-    route: "/truck",
-    objective: "Cadastrar veículos da frota com dados de placa, modelo, marca, grupo de frota e informações operacionais.",
+    extra:
+      "Função de Cópia: O botão de cópia duplica a linha com todas as seções, gerando um novo registro em modo de edição.\n\n" +
+      "Pesquisa Avançada de Linha:\n\n" +
+      "A busca avançada de linha (ícone de lupa) está disponível no cadastro de Linhas Dedicadas do motorista. " +
+      "Permite filtrar por código e descrição da linha, exibindo origem, destino e quantidade de trechos.",
   },
 ];
 

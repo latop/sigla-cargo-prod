@@ -38,7 +38,8 @@ export interface FieldSchema {
   mask?: "plate" | "year";
   /** For select fields: fixed list of options { value, label } */
   options?: { value: string; label: string }[];
-  /** Display only the code in the table (for lookup fields) */
+  /** Map option value → badge CSS classes for colored badges in list */
+  badgeColorMap?: Record<string, string>;
   tableLabelFn?: "codeName" | "codeDescription" | "codeOnly" | "descriptionOnly";
   required?: boolean;
   maxLength?: number;
@@ -101,6 +102,24 @@ export const entitySchemas: Record<string, EntitySchema> = {
     fields: [
       { key: "code", label: "Código", type: "string", required: true, maxLength: 10, uppercase: true },
       { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true },
+    ],
+  },
+
+  "/course": {
+    endpoint: "Course",
+    titleKey: "menu.course",
+    fields: [
+      { key: "code", label: "Código", type: "string", required: true, maxLength: 10, uppercase: true },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true },
+      { key: "restrictionType", label: "license.restrictionType", type: "select", required: true, options: [
+        { value: "0", label: "license.none" },
+        { value: "1", label: "license.alert" },
+        { value: "2", label: "license.block" },
+      ], badgeColorMap: {
+        "0": "bg-muted text-muted-foreground border-border",
+        "1": "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+        "2": "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
+      }},
     ],
   },
 
@@ -229,6 +248,25 @@ export const entitySchemas: Record<string, EntitySchema> = {
     ],
   },
 
+  "/license": {
+    endpoint: "License",
+    titleKey: "menu.license",
+    feminine: true,
+    fields: [
+      { key: "code", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+      { key: "restrictionType", label: "license.restrictionType", type: "select", required: true, formColSpan: 2, options: [
+        { value: "0", label: "license.none" },
+        { value: "1", label: "license.alert" },
+        { value: "2", label: "license.block" },
+      ], badgeColorMap: {
+        "0": "bg-muted text-muted-foreground border-border",
+        "1": "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+        "2": "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
+      } },
+    ],
+  },
+
   "/location-group": {
     endpoint: "LocationGroup",
     titleKey: "menu.locationGroup",
@@ -308,6 +346,22 @@ export const entitySchemas: Record<string, EntitySchema> = {
     fields: [
       { key: "code", label: "Código", type: "string", required: true, maxLength: 10, uppercase: true, formColSpan: 2 },
       { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+    ],
+  },
+
+  "/planning-model": {
+    endpoint: "PlanningModel",
+    titleKey: "menu.planningModel",
+    formWidth: 720,
+    filters: [
+      { paramName: "Filter1String", label: "Código", type: "string", uppercase: true },
+      { paramName: "Filter2String", label: "Descrição", type: "string", uppercase: true },
+    ],
+    fields: [
+      { key: "code", label: "Código", type: "string", required: true, maxLength: 20, uppercase: true, formColSpan: 2 },
+      { key: "description", label: "Descrição", type: "string", required: true, maxLength: 100, uppercase: true, formColSpan: 4 },
+      { key: "scenarioId", label: "Cenário", type: "lookup", required: true, lookupEndpoint: "Scenario", lookupLabelFn: "codeDescription", formColSpan: 3 },
+      { key: "isActive", label: "Ativo", type: "boolean", formColSpan: 1 },
     ],
   },
 

@@ -372,7 +372,7 @@ export function DailyTripEditPanel({ tripId, initialData, onClose, onSaved }: Da
           {/* Row 1 */}
           <div className="grid grid-cols-6 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Data da Viagem *</Label>
+              <Label className="text-xs">Data da Viagem <span className="text-destructive">*</span></Label>
               <DatePickerField value={formData.tripDate} onChange={(v) => updateForm("tripDate", v)} hasError={formErrors.tripDate} />
             </div>
             <div className="space-y-1">

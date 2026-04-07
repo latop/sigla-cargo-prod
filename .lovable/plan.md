@@ -1,58 +1,59 @@
 
 
-## Pacote de Atualização — v1.14.0
+## Refatorar Dashboard para usar `/dashboard/GetDashboardSummary`
 
-### Resumo das alterações desta sprint
-Melhorias no painel de edição de Circuitos de Motoristas (CircuitEditPanel):
-- Altura do painel reduzida de 65vh para 50vh
-- Modal de detalhe da viagem (API GetDailyTripDetail) com layout master-detail e seções
-- Fonte menor nos campos de data/hora (DatePickerField com inputClassName)
-- Ícones de ações alinhados à direita
-- Campos do cabeçalho (Iní./Fim Plan., Iní./Fim Real.) padronizados em tamanho
-- Scroll horizontal posicionado na parte inferior da tabela de tasks
-- Largura das colunas Linha/Origem/Destino reduzida; Iní./Fim Plan. aumentada
-- Largura do painel aumentada para 1300px
+Substituir as múltiplas chamadas de API (Gantt, Drivers count, Trucks count) por um único endpoint dedicado que retorna todos os dados agregados.
 
 ---
 
-### 1. Sincronização de Traduções (pt/en/es)
-Nenhuma nova chave de tradução foi adicionada nesta sprint — as alterações são puramente visuais e de layout no CircuitEditPanel. **Sem alterações nos arquivos de tradução.**
+### O que muda
 
-### 2. Manual do Usuário (`src/pages/Manual.tsx`)
-- **Atualizar** a entrada "Escala de Motoristas" (linha ~186-189) de "Pendente de liberação" para documentação real:
-  - Tela: Circuitos de Motoristas
-  - Objetivo: Gestão de circuitos de motoristas com Gráfico de Gantt e edição de circuitos
-  - Filtros: Data Início, Data Fim, Grupo de Localidade, Motorista
-  - Funcionalidades: Gráfico Gantt, painel de edição com tasks (viagens/atividades), detalhe de viagem com seções, adição/remoção de viagens e atividades
+O Dashboard atual faz 4+ chamadas separadas (Gantt do dia, Gantt da semana, Drivers count, Trucks count) e calcula KPIs no frontend. O novo endpoint `/dashboard/GetDashboardSummary` já retorna tudo pronto.
 
-### 3. Manual Técnico (`src/pages/TechnicalManual.tsx`)
-- **Atualizar** a entrada "Escala de Motoristas" (linha ~190-199) de `ComingSoonPage.tsx` para documentação técnica real:
-  - component: `DriverCircuitPage.tsx`
-  - Endpoints: `GET /gantt/GetDriverCircuitByPeriodGantt`, `GET /gantt/GetDailyTripDetail`, `POST/PUT/DELETE` circuitos
-  - sharedComponents: `CircuitGanttChart`, `CircuitEditPanel`, `FloatingPanel`, `DatePickerField`, `LookupSearchField`
-  - Features: Gantt de circuitos, edição de circuitos com tasks, modal de detalhe master-detail, scroll horizontal inferior, ícones alinhados à direita
+### Mapeamento do DTO para o Dashboard
 
-### 4. Changelog (`src/pages/Changelog.tsx`)
-- **Incrementar** `APP_VERSION` de `"1.13.0"` para `"1.14.0"`
-- **Adicionar** nova entrada no topo do array `changelog`:
+| Campo do DTO | Uso no Dashboard |
+|---|---|
+| `totalTrips` | KPI "Viagens Hoje" |
+| `inProgress` | KPI "Em Execução" |
+| `completed` | Donut status |
+| `planned` | Donut status |
+| `cancelled` | Donut status |
+| `delayed` | KPI "Atrasadas" + Donut |
+| `uniqueDrivers` | KPI "Motoristas Escalados" |
+| `uniqueVehicles` | KPI "Veículos em Operação" |
+| `onTimeRate` | Barra "Pontualidade" |
+| `completionRate` | Barra "Conclusão" |
+| `cancelRate` | Barra "Cancelamentos" |
+| `tripCounts[]` | Gráfico de barras 7 dias (dtRef + qtyTrips) |
+| `nextDepartures[]` | Tabela "Próximas Saídas" |
+| `justificationsBySectors[]` | Gráfico "Justificativas por Setor" |
 
-```
-version: "1.14.0"
-date: "2026-03-20"
-type: "improvement"
-changes:
-  - Painel de edição de circuitos: altura reduzida, largura aumentada e scroll horizontal na parte inferior
-  - Modal de detalhe da viagem com layout master-detail exibindo seções (trechos)
-  - Campos de data/hora do cabeçalho padronizados no mesmo tamanho dos demais campos
-  - Colunas de Linha/Origem/Destino compactadas e Iní./Fim Plan. ampliadas na tabela de tasks
-  - Ícones de ações alinhados à direita e fonte reduzida nos campos de data
-```
-(Cada change com tradução pt/en/es)
+### Alterações técnicas
 
-### Arquivos Impactados
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/pages/Changelog.tsx` | APP_VERSION → 1.14.0, nova entrada |
-| `src/pages/Manual.tsx` | Escala de Motoristas: documentação real |
-| `src/pages/TechnicalManual.tsx` | Escala de Motoristas: documentação técnica |
+**`src/pages/Dashboard.tsx`**:
+
+1. **Remover queries**: Eliminar `dashboard-gantt`, `dashboard-gantt-week`, `dashboard-drivers`, `dashboard-trucks`.
+
+2. **Nova query única**: `dashboard-summary` chamando `GET /dashboard/GetDashboardSummary?tripDate={YYYY-MM-DD}&locationGroupCode={code}`. O `locationGroupCode` é enviado apenas quando selecionado (não "Todas").
+
+3. **KPIs diretos**: Usar `summary.totalTrips`, `summary.inProgress`, `summary.uniqueDrivers`, `summary.uniqueVehicles`, `summary.delayed` diretamente — sem cálculos no frontend.
+
+4. **Taxas diretas**: `summary.onTimeRate`, `summary.completionRate`, `summary.cancelRate` já vêm prontos.
+
+5. **Donut "Status do Dia"**: Montar pieData a partir de `summary.planned`, `summary.inProgress`, `summary.completed`, `summary.delayed`, `summary.cancelled`.
+
+6. **Gráfico de barras**: Mapear `summary.tripCounts` (array de `{dtRef, qtyTrips}`) diretamente para o barData, formatando dtRef como "Seg 20".
+
+7. **Tabela "Próximas Saídas"**: Usar `summary.nextDepartures` diretamente. Campos: `startPlanned`, `demand`, `locationOrigCode`, `locationDestCode`, `licensePlate`, `nickName`, `statusTrip`.
+
+8. **Justificativas por Setor**: Usar `summary.justificationsBySectors` (array de `{responsibleSectorCode, qtyJustifications}`).
+
+9. **Navegação de dias**: Mantém o `dayOffset` existente, passando a data calculada como `tripDate`.
+
+10. **Filtro LocationGroup**: Mantém os botões existentes, passando `locationGroupCode` quando selecionado. Query de LocationGroups permanece separada (para montar os botões de filtro).
+
+11. **Seção "Circuitos & Jornadas"**: Permanece com dados mock (sem endpoint correspondente no DTO).
+
+12. **Refresh/refetch**: `handleRefresh` invalida apenas `dashboard-summary` + `dashboard-location-groups`.
 

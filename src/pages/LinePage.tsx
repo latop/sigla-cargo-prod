@@ -677,7 +677,7 @@ const LinePage = () => {
             <div className="grid grid-cols-12 gap-2">
               <div className="col-span-4 space-y-1">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">{t("common.code")} *</Label>
+                  <Label className="text-xs">{t("common.code")} <span className="text-destructive">*</span></Label>
                   <button
                     type="button"
                     title={codeManuallyEdited ? "Usar sugestão automática" : "Editar manualmente"}
@@ -741,7 +741,7 @@ const LinePage = () => {
             {/* ── Linha 2: Origem + Destino + Grupo Frota + Tipo Viagem ── */}
             <div className="grid grid-cols-12 gap-2">
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">{t("line.origin")} *</Label>
+                <Label className="text-xs">{t("line.origin")} <span className="text-destructive">*</span></Label>
                 <LookupSearchField
                   endpoint="Location"
                   labelFn="codeOnly"
@@ -760,7 +760,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">{t("line.destination")} *</Label>
+                <Label className="text-xs">{t("line.destination")} <span className="text-destructive">*</span></Label>
                 <LookupSearchField
                   endpoint="Location"
                   labelFn="codeOnly"
@@ -779,7 +779,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">{t("line.fleetGroup")} *</Label>
+                <Label className="text-xs">{t("line.fleetGroup")} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.fleetGroupId || ""}
                   onValueChange={(v) => {
@@ -797,7 +797,7 @@ const LinePage = () => {
                 </Select>
               </div>
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">{t("line.tripType")} *</Label>
+                <Label className="text-xs">{t("line.tripType")} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.tripTypeId || ""}
                   onValueChange={(v) => {
@@ -833,7 +833,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">{t("line.cost")} *</Label>
+                <Label className="text-xs">{t("line.cost")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -856,7 +856,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-1 space-y-1">
-                <Label className="text-xs">{t("line.overtime")} *</Label>
+                <Label className="text-xs">{t("line.overtime")} <span className="text-destructive">*</span></Label>
                 <Input
                   className={cn("h-8 text-xs", formErrors.overtimeAllowed && "border-destructive")}
                   placeholder="hh:mm"
@@ -875,7 +875,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">{t("line.startDate")} *</Label>
+                <Label className="text-xs">{t("line.startDate")} <span className="text-destructive">*</span></Label>
                 <DatePickerField
                   value={formData.startDate}
                   onChange={(v) => updateForm("startDate", v)}
@@ -883,7 +883,7 @@ const LinePage = () => {
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">{t("line.endDate")} *</Label>
+                <Label className="text-xs">{t("line.endDate")} <span className="text-destructive">*</span></Label>
                 <DatePickerField
                   value={formData.endDate}
                   onChange={(v) => updateForm("endDate", v)}
@@ -960,7 +960,7 @@ const LinePage = () => {
                             {/* Row: Origem | Destino | Duração | Tipo Parada | StopTime | Hub Log | Grupo Loc | [Delete] */}
                             <div className="grid grid-cols-12 gap-2 items-end">
                               <div className="space-y-1 col-span-2">
-                                <Label className="text-xs">{t("line.origin")} *</Label>
+                                <Label className="text-xs">{t("line.origin")} <span className="text-destructive">*</span></Label>
                                 <LookupSearchField
                                   endpoint="Location"
                                   labelFn="codeOnly"
@@ -976,7 +976,7 @@ const LinePage = () => {
                                 />
                               </div>
                               <div className="space-y-1 col-span-2">
-                                <Label className="text-xs">{t("line.destination")} *</Label>
+                                <Label className="text-xs">{t("line.destination")} <span className="text-destructive">*</span></Label>
                                 <LookupSearchField
                                   endpoint="Location"
                                   labelFn="codeOnly"
@@ -1016,7 +1016,7 @@ const LinePage = () => {
                                 />
                               </div>
                               <div className="space-y-1 col-span-2">
-                                <Label className="text-xs">{t("line.stopType")} *</Label>
+                                <Label className="text-xs">{t("line.stopType")} <span className="text-destructive">*</span></Label>
                                 <Select
                                   value={section.stopTypeId || ""}
                                   onValueChange={(v) => updateSection(idx, "stopTypeId", v || null)}
