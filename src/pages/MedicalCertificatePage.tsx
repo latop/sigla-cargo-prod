@@ -7,7 +7,7 @@ import { format, differenceInDays, parseISO, addDays } from "date-fns";
 import {
   Search, X, Plus, Pencil, Trash2, Save, Upload, FileText, Eye,
   ChevronLeft, ChevronRight, ShieldAlert, Activity, Clock, Users,
-  AlertTriangle, CheckCircle2, Ban, Calendar,
+  AlertTriangle, CheckCircle2, Ban, Calendar, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -334,6 +334,11 @@ export default function MedicalCertificatePage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Mock data banner */}
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[

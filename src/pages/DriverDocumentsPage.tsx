@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   FileText, Plus, Search, X, Upload, Trash2, Eye, Send,
   CheckCircle2, Clock, AlertTriangle, Users, Loader2,
-  ChevronLeft, ChevronRight, Pencil, Download, FileUp,
+  ChevronLeft, ChevronRight, Pencil, Download, FileUp, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -302,6 +302,11 @@ export default function DriverDocumentsPage() {
 
   return (
     <div className="space-y-4 p-4">
+      {/* Mock data banner */}
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
       {/* Header */}
       <div className="flex items-center gap-2">
         <FileText className="h-5 w-5 text-primary" />

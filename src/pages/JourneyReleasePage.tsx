@@ -34,15 +34,14 @@ const todayISO = () => {
 const formatDateTimeShort = (v?: string | null) => {
   if (!v) return "--";
   try {
-    // Try native parsing first (ISO format)
-    let d = new Date(v);
-    // If invalid, try dd/MM/yyyy HH:mm or dd/MM/yyyy formats
-    if (isNaN(d.getTime())) {
-      const parts = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
-      if (parts) {
-        const [, day, month, year, hour = "0", min = "0"] = parts;
-        d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
-      }
+    // Try dd/MM/yyyy or dd-MM-yyyy patterns first (avoid JS native MM/DD ambiguity)
+    const parts = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    let d: Date;
+    if (parts) {
+      const [, day, month, year, hour = "0", min = "0"] = parts;
+      d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
+    } else {
+      d = new Date(v);
     }
     if (isNaN(d.getTime())) return "--";
     return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;

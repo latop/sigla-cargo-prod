@@ -57,16 +57,19 @@ interface JourneyChecklistFormProps {
 const formatDisplayDateTime = (v?: string | null): string => {
   if (!v) return "--";
   try {
-    let d = new Date(v);
-    if (isNaN(d.getTime())) {
-      const parts = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/);
-      if (parts) {
-        const [, day, month, year, hour = "0", min = "0"] = parts;
-        d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
-      }
+    // Try DD/MM/YYYY or DD-MM-YYYY format first to avoid JS Date MM/DD ambiguity
+    const parts = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/);
+    if (parts) {
+      const [, day, month, year, hour = "0", min = "0"] = parts;
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
     }
-    if (isNaN(d.getTime())) return "--";
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    // ISO format (YYYY-MM-DDTHH:mm)
+    const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+    if (iso) {
+      const [, year, month, day, hour = "00", min = "00"] = iso;
+      return `${day}/${month}/${year} ${hour}:${min}`;
+    }
+    return "--";
   } catch { return "--"; }
 };
 
@@ -260,6 +263,7 @@ export function JourneyChecklistForm({ item, onClose, onSaved }: JourneyChecklis
                 <LookupSearchField
                   endpoint="Drivers"
                   searchFilterParam="Filter1String"
+                  alternateSearchFilterParam="Filter2String"
                   value={motoristaLiberado}
                   onChange={(id, item) => {
                     const nick = item?.nickName as string || item?.name as string || "";
@@ -276,8 +280,8 @@ export function JourneyChecklistForm({ item, onClose, onSaved }: JourneyChecklis
                   transformItem={(item) => ({
                     ...item,
                     id: item.id as string,
-                    code: "",
-                    name: `${item.nickName || ""} - ${item.integrationCode || ""}`,
+                    code: (item.nickName as string) || "",
+                    name: (item.integrationCode as string) || "",
                   })}
                   initialLabel={motoristaLiberadoLabel}
                 />
@@ -308,23 +312,25 @@ export function JourneyChecklistForm({ item, onClose, onSaved }: JourneyChecklis
                 <LookupSearchField
                   endpoint="Truck"
                   searchFilterParam="Filter1String"
+                  alternateSearchFilterParam="Filter2String"
                   value={veiculoLiberado}
                   onChange={(id, item) => {
-                    const plate = item?.licensePlate as string || item?.fleetCode as string || "";
+                    const plate = item?.licensePlate as string || "";
+                    const fleet = item?.fleetCode as string || "";
                     setVeiculoLiberado(plate);
-                    setVeiculoLiberadoLabel(plate);
+                    setVeiculoLiberadoLabel(fleet ? `${plate} - ${fleet}` : plate);
                   }}
                   placeholder="Placa ou Frota"
                   className="h-8 text-xs"
                   nullable
                   displayAsText
-                  modalVisibleColumns={["licensePlate", "fleetCode"]}
+                  modalVisibleColumns={["fleetCode", "licensePlate"]}
                   columnLabels={{ licensePlate: "Placa", fleetCode: "Cód. Frota" }}
                   transformItem={(item) => ({
                     ...item,
                     id: item.id as string,
-                    code: "",
-                    name: `${item.licensePlate || ""} - ${item.fleetCode || ""}`,
+                    code: (item.licensePlate as string) || "",
+                    name: (item.fleetCode as string) || "",
                   })}
                   initialLabel={veiculoLiberadoLabel}
                 />

@@ -59,64 +59,18 @@ export const menuGroups: MenuGroup[] = [
     directLink: { url: "/home", icon: LayoutDashboard },
   },
   {
-    labelKey: "sidebar.coordination",
+    labelKey: "sidebar.admin",
     items: [
-      { titleKey: "menu.dailyTrip", url: "/daily-trip", icon: CalendarDays },
-      { titleKey: "menu.dailyTripsSchedule", url: "/daily-trips-schedule", icon: Route },
+      { titleKey: "menu.adminParameters", url: "/admin-parameters", icon: Zap },
+      { titleKey: "menu.userManagement", url: "/user-management", icon: Users },
+      { titleKey: "menu.auditLog", url: "/audit-log", icon: ScrollText },
     ],
   },
   {
-    labelKey: "sidebar.maintenance",
+    labelKey: "sidebar.analytics",
     items: [
-      { titleKey: "menu.vehicleMaintenance", url: "/vehicle-maintenance", icon: Wrench },
-      { titleKey: "menu.mileageHourmeter", url: "/mileage-hourmeter", icon: Cpu },
-      { titleKey: "menu.preventiveMaintenance", url: "/preventive-maintenance", icon: CalendarDays },
-      { titleKey: "menu.correctiveMaintenance", url: "/corrective-maintenance", icon: Wrench },
-      { titleKey: "menu.downtimeRecord", url: "/downtime-record", icon: Timer },
-      { titleKey: "menu.reserveFleet", url: "/reserve-fleet", icon: Shield },
-    ],
-  },
-  {
-    labelKey: "sidebar.monitoring",
-    items: [
-      { titleKey: "menu.departuresAndArrivals", url: "/departures-and-arrivals", icon: Truck },
-      { titleKey: "menu.releaseDriver", url: "/release-driver", icon: UserMinus },
-      { titleKey: "menu.dailyVehicleAssignment", url: "/daily-vehicle-assignment", icon: Car },
-      { titleKey: "menu.driverAvailability", url: "/driver-availability", icon: Radio },
-    ],
-  },
-  {
-    labelKey: "sidebar.driverSchedule",
-    items: [
-      { titleKey: "menu.driversRequest", url: "/drivers-request", icon: UserCheck },
-      { titleKey: "menu.driversSchedule", url: "/drivers-schedule", icon: Users },
-      { titleKey: "menu.publishJourney", url: "/publish-journey", icon: Megaphone },
-      { titleKey: "menu.driverVacation", url: "/driver-vacation", icon: CalendarDays },
-      { titleKey: "menu.trainingClass", url: "/training-class", icon: GraduationCap },
-      { titleKey: "menu.driverOccurrence", url: "/driver-occurrence", icon: ClipboardList },
-      { titleKey: "menu.medicalCertificate", url: "/medical-certificate", icon: ShieldAlert },
-      { titleKey: "menu.driverDocuments", url: "/driver-documents", icon: FileText },
-      { titleKey: "menu.overtimeBank", url: "/overtime-bank", icon: Clock },
-      { titleKey: "menu.shiftSwap", url: "/shift-swap", icon: ArrowLeftRight },
-      { titleKey: "menu.journeyRules", url: "/journey-rules", icon: Scale },
-    ],
-  },
-  {
-    labelKey: "sidebar.imports",
-    items: [
-      { titleKey: "menu.importDemands", url: "/import-map", icon: FileUp },
-    ],
-  },
-  {
-    labelKey: "sidebar.planning",
-    items: [
-      
-      { titleKey: "menu.planningModel", url: "/planning-model", icon: LayoutTemplate },
-      { titleKey: "menu.scenarios", url: "/scenarios", icon: Layers },
-      { titleKey: "menu.strategicPlanning", url: "/strategic-planning", icon: Target },
-      { titleKey: "menu.tripOptimization", url: "/trip-optimization", icon: Cpu },
-      { titleKey: "menu.vehiclePlanning", url: "/vehicle-planning", icon: Truck },
-      { titleKey: "menu.smartAllocation", url: "/smart-allocation", icon: Cpu },
+      { titleKey: "menu.operationalKpis", url: "/operational-kpis", icon: BarChart3 },
+      { titleKey: "menu.analytics", url: "/analytics", icon: BarChart3 },
     ],
   },
   {
@@ -152,28 +106,73 @@ export const menuGroups: MenuGroup[] = [
       { titleKey: "menu.timezone", url: "/timezone", icon: Clock },
       { titleKey: "menu.tripType", url: "/trip-type", icon: Route },
       { titleKey: "menu.truck", url: "/truck", icon: Truck },
-      
+    ],
+  },
+  {
+    labelKey: "sidebar.coordination",
+    items: [
+      { titleKey: "menu.dailyTrip", url: "/daily-trip", icon: CalendarDays },
+      { titleKey: "menu.dailyTripsSchedule", url: "/daily-trips-schedule", icon: Route },
+    ],
+  },
+  {
+    labelKey: "sidebar.driverSchedule",
+    items: [
+      { titleKey: "menu.driversRequest", url: "/drivers-request", icon: UserCheck },
+      { titleKey: "menu.driversSchedule", url: "/drivers-schedule", icon: Users },
+      { titleKey: "menu.driverJourney", url: "/driver-journey", icon: ClipboardList },
+      { titleKey: "menu.publishJourney", url: "/publish-journey", icon: Megaphone },
+      { titleKey: "menu.driverVacation", url: "/driver-vacation", icon: CalendarDays },
+      { titleKey: "menu.trainingClass", url: "/training-class", icon: GraduationCap },
+      { titleKey: "menu.driverOccurrence", url: "/driver-occurrence", icon: ClipboardList },
+      { titleKey: "menu.medicalCertificate", url: "/medical-certificate", icon: ShieldAlert },
+      { titleKey: "menu.driverDocuments", url: "/driver-documents", icon: FileText },
+      { titleKey: "menu.overtimeBank", url: "/overtime-bank", icon: Clock },
+      { titleKey: "menu.shiftSwap", url: "/shift-swap", icon: ArrowLeftRight },
+      { titleKey: "menu.journeyRules", url: "/journey-rules", icon: Scale },
+    ],
+  },
+  {
+    labelKey: "sidebar.imports",
+    items: [
+      { titleKey: "menu.importDemands", url: "/import-map", icon: FileUp },
+    ],
+  },
+  {
+    labelKey: "sidebar.maintenance",
+    items: [
+      { titleKey: "menu.vehicleMaintenance", url: "/vehicle-maintenance", icon: Wrench },
+      { titleKey: "menu.mileageHourmeter", url: "/mileage-hourmeter", icon: Cpu },
+      { titleKey: "menu.preventiveMaintenance", url: "/preventive-maintenance", icon: CalendarDays },
+      { titleKey: "menu.correctiveMaintenance", url: "/corrective-maintenance", icon: Wrench },
+      { titleKey: "menu.downtimeRecord", url: "/downtime-record", icon: Timer },
+      { titleKey: "menu.reserveFleet", url: "/reserve-fleet", icon: Shield },
+    ],
+  },
+  {
+    labelKey: "sidebar.monitoring",
+    items: [
+      { titleKey: "menu.departuresAndArrivals", url: "/departures-and-arrivals", icon: Truck },
+      { titleKey: "menu.releaseDriver", url: "/release-driver", icon: UserMinus },
+      { titleKey: "menu.dailyVehicleAssignment", url: "/daily-vehicle-assignment", icon: Car },
+      { titleKey: "menu.driverAvailability", url: "/driver-availability", icon: Radio },
+    ],
+  },
+  {
+    labelKey: "sidebar.planning",
+    items: [
+      { titleKey: "menu.planningModel", url: "/planning-model", icon: LayoutTemplate },
+      { titleKey: "menu.scenarios", url: "/scenarios", icon: Layers },
+      { titleKey: "menu.strategicPlanning", url: "/strategic-planning", icon: Target },
+      { titleKey: "menu.tripOptimization", url: "/trip-optimization", icon: Cpu },
+      { titleKey: "menu.vehiclePlanning", url: "/vehicle-planning", icon: Truck },
+      { titleKey: "menu.smartAllocation", url: "/smart-allocation", icon: Cpu },
     ],
   },
   {
     labelKey: "sidebar.reports",
     items: [],
     directLink: { url: "/reports", icon: FileBarChart },
-  },
-  {
-    labelKey: "sidebar.analytics",
-    items: [
-      { titleKey: "menu.operationalKpis", url: "/operational-kpis", icon: BarChart3 },
-      { titleKey: "menu.analytics", url: "/analytics", icon: BarChart3 },
-    ],
-  },
-  {
-    labelKey: "sidebar.admin",
-    items: [
-      { titleKey: "menu.adminParameters", url: "/admin-parameters", icon: Zap },
-      { titleKey: "menu.userManagement", url: "/user-management", icon: Users },
-      { titleKey: "menu.auditLog", url: "/audit-log", icon: ScrollText },
-    ],
   },
 ];
 

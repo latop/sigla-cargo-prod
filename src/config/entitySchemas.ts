@@ -416,8 +416,8 @@ export const entitySchemas: Record<string, EntitySchema> = {
     formWidth: 720,
     filters: [
       { paramName: "Filter1String", label: "Código", type: "string", uppercase: true },
-      { paramName: "Filter2String", label: "Cód. TMS", type: "string", uppercase: true, colSpan: 0.5 },
-      { paramName: "Filter3String", label: "Cód. GPS", type: "string", uppercase: false, colSpan: 0.5 },
+      { paramName: "Filter3String", label: "Cód. TMS", type: "string", uppercase: true, colSpan: 0.5 },
+      { paramName: "Filter2String", label: "Cód. GPS", type: "string", uppercase: false, colSpan: 0.5 },
       { paramName: "Filter1Id", label: "Grupo de Localidade", type: "lookup", lookupEndpoint: "LocationGroup", lookupLabelFn: "codeDescription" },
       { paramName: "Filter2Id", label: "Tipo de Localidade", type: "lookup", lookupEndpoint: "LocationType", lookupLabelFn: "codeDescription" },
       { paramName: "Filter1Bool", label: "Operação Carga", type: "bool" },

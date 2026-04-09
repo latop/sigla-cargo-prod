@@ -62,7 +62,7 @@ function AppLayoutInner() {
   return (
     <div className="min-h-screen flex w-full">
       <AppSidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex min-h-0 flex-col">
         <header className="h-10 flex items-center justify-between border-b px-4 bg-card">
           <div className="flex items-center gap-3">
             <SidebarTrigger />
@@ -108,54 +108,54 @@ function AppLayoutInner() {
           </div>
         </header>
         <TabBar />
-        <main className="flex-1 overflow-auto relative">
-         <React.Suspense fallback={<div className="flex items-center justify-center h-full"><span className="text-muted-foreground text-sm">Carregando...</span></div>}>
-          {/* Render all open tabs, keep them mounted, hide inactive */}
-          {tabs.map((tab) => {
-            const Component = getRouteComponent(tab.id);
-            const isActive = tab.id === activeTabId;
-            return (
-              <div
-                key={tab.id}
-                className="h-full"
-                style={{ display: isActive ? "block" : "none" }}
-              >
-                <div className="p-4 h-full">
-                  <TabPageWrapper
-                    tabId={tab.id}
-                    setPageTitle={setPageTitle}
-                    setPageIcon={setPageIcon}
-                    isActive={isActive}
-                  >
-                    <Component />
-                  </TabPageWrapper>
-                </div>
-              </div>
-            );
-          })}
-          {/* Utility pages (changelog, manual, etc.) */}
-          {(() => {
-            const utilityPaths = ["/changelog", "/manual", "/technical-manual"];
-            const currentPath = location.pathname;
-            if (utilityPaths.includes(currentPath)) {
-              const UtilityComponent = getRouteComponent(currentPath);
+        <main className="relative min-h-0 flex-1 overflow-auto">
+          <React.Suspense fallback={<div className="flex items-center justify-center h-full"><span className="text-muted-foreground text-sm">Carregando...</span></div>}>
+            {/* Render all open tabs, keep them mounted, hide inactive */}
+            {tabs.map((tab) => {
+              const Component = getRouteComponent(tab.id);
+              const isActive = tab.id === activeTabId;
               return (
-                <div className="p-4 h-full">
-                  <PageContextProvider setPageTitle={setPageTitle} setPageIcon={setPageIcon} isActive={true}>
-                    <UtilityComponent />
-                  </PageContextProvider>
+                <div
+                  key={tab.id}
+                  className="h-full min-h-0"
+                  style={{ display: isActive ? "block" : "none" }}
+                >
+                  <div className="flex h-full min-h-0 flex-col p-4">
+                    <TabPageWrapper
+                      tabId={tab.id}
+                      setPageTitle={setPageTitle}
+                      setPageIcon={setPageIcon}
+                      isActive={isActive}
+                    >
+                      <Component />
+                    </TabPageWrapper>
+                  </div>
                 </div>
               );
-            }
-            return null;
-          })()}
-          {/* If no tabs and not a utility page, show dashboard */}
-          {tabs.length === 0 && !["/changelog", "/manual", "/technical-manual"].includes(location.pathname) && (
-            <div className="p-4 h-full">
-              <DashboardFallback setPageTitle={setPageTitle} setPageIcon={setPageIcon} />
-            </div>
-          )}
-         </React.Suspense>
+            })}
+            {/* Utility pages (changelog, manual, etc.) */}
+            {(() => {
+              const utilityPaths = ["/changelog", "/manual", "/technical-manual"];
+              const currentPath = location.pathname;
+              if (utilityPaths.includes(currentPath)) {
+                const UtilityComponent = getRouteComponent(currentPath);
+                return (
+                  <div className="flex h-full min-h-0 flex-col p-4">
+                    <PageContextProvider setPageTitle={setPageTitle} setPageIcon={setPageIcon} isActive={true}>
+                      <UtilityComponent />
+                    </PageContextProvider>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {/* If no tabs and not a utility page, show dashboard */}
+            {tabs.length === 0 && !["/changelog", "/manual", "/technical-manual"].includes(location.pathname) && (
+              <div className="flex h-full min-h-0 flex-col p-4">
+                <DashboardFallback setPageTitle={setPageTitle} setPageIcon={setPageIcon} />
+              </div>
+            )}
+          </React.Suspense>
         </main>
       </div>
     </div>

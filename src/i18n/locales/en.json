@@ -101,7 +101,8 @@
     "auditLog": "Audit Log",
     "operationalKpis": "Operational KPIs",
     "analytics": "Analytics",
-    "locationFrequency": "Location Frequency"
+    "locationFrequency": "Location Frequency",
+    "driverJourney": "Driver Journeys"
   },
   "locationFrequency": {
     "selectLocation": "Select location",
@@ -111,8 +112,14 @@
     "end": "End",
     "loading": "Loading",
     "unloading": "Unloading",
-    "noSlots": "No time slots registered for this day.",
-    "invalidTimeRange": "Start time must be before end time."
+    "noSlots": "No time slots registered for this location.",
+    "invalidTimeRange": "Start time must be before end time.",
+    "daysOfWeek": "Days of Week",
+    "addNewSlot": "Add New Slot",
+    "selectAtLeastOneDay": "Select at least one day of the week.",
+    "slot": "slot",
+    "slots": "slots",
+    "confirmDeleteSlot": "Delete slot {{start}} - {{end}} on days: {{days}}?"
   },
   "overtimeBank": {
     "workedHours": "Worked Hours",
@@ -167,7 +174,8 @@
     "confirmStatusTitle": "Confirm Status Change",
     "confirmStatusDesc": "Do you want to change the status of {{driver}} to {{status}}?",
     "noDriversYet": "No drivers added yet. Use the field above to search and add.",
-    "saveFirst": "Save the training first to add drivers."
+    "saveFirst": "Save the training first to add drivers.",
+    "searchCourse": "Search Course"
   },
   "driverOccurrence": {
     "newTitle": "New Occurrence",

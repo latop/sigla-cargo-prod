@@ -1,4 +1,4 @@
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,12 @@ export default function AnalyticsPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4 p-4"
     >
-      <Card>
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
+
+      <Card className="opacity-60">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Dashboards Power BI</CardTitle>
           <p className="text-sm text-muted-foreground">

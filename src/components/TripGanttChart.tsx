@@ -1,5 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { getOnTimeStatus } from "@/lib/ontime-utils";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Tooltip,
   TooltipContent,
@@ -12,6 +15,7 @@ import {
   Minimize2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 export interface TripRow {
@@ -64,7 +68,7 @@ const ZOOM_OPTIONS: { key: ZoomLevel; label: string; hours: number }[] = [
   { key: "15d", label: "15 dias", hours: 360 },
 ];
 
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT = 34;
 const VEHICLE_COL_WIDTH = 160;
 
 const dateToAbsMin = (iso: string): number => Math.floor(new Date(iso).getTime() / 60000);
@@ -140,17 +144,41 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
     return labels;
   }, [windowStart, windowEnd, zoomConfig.hours]);
 
-  const truckTripsMap = useMemo(() => {
+  const { truckTripsMap, unassignedTrips } = useMemo(() => {
     const map = new Map<string, TripRow[]>();
+    const unassigned: TripRow[] = [];
     for (const trip of trips) {
-      if (!trip.licensePlate) continue;
+      if (!trip.licensePlate) {
+        unassigned.push(trip);
+        continue;
+      }
       const truck = trucks.find((t) => t.licensePlate === trip.licensePlate);
-      if (!truck) continue;
+      if (!truck) {
+        unassigned.push(trip);
+        continue;
+      }
       if (!map.has(truck.truckId)) map.set(truck.truckId, []);
       map.get(truck.truckId)!.push(trip);
     }
-    return map;
+    return { truckTripsMap: map, unassignedTrips: unassigned };
   }, [trucks, trips]);
+
+  // Sort trucks: those with trips first (sorted by plate), then those without (sorted by plate)
+  const sortedTrucks = useMemo(() => {
+    const withTrips: TruckRow[] = [];
+    const withoutTrips: TruckRow[] = [];
+    for (const truck of trucks) {
+      if (truckTripsMap.has(truck.truckId)) {
+        withTrips.push(truck);
+      } else {
+        withoutTrips.push(truck);
+      }
+    }
+    const byPlate = (a: TruckRow, b: TruckRow) => (a.licensePlate || "").localeCompare(b.licensePlate || "");
+    withTrips.sort(byPlate);
+    withoutTrips.sort(byPlate);
+    return [...withTrips, ...withoutTrips];
+  }, [trucks, truckTripsMap]);
 
   const nowAbsMin = Math.floor(now.getTime() / 60000);
   const showNow = nowAbsMin >= windowStart && nowAbsMin <= windowEnd;
@@ -240,7 +268,47 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
 
     const allStarts = [plannedStart, actualStart, stopStart].filter((v): v is number => v !== null);
     const allEnds = [plannedEnd, actualEnd, stopEnd].filter((v): v is number => v !== null);
-    if (allStarts.length === 0) return null;
+
+    // Trips with no dates at all: render a small marker at "now" or window start
+    if (allStarts.length === 0) {
+      const markerPos = Math.max(Math.min(nowAbsMin, windowEnd), windowStart);
+      const markerLeft = pctLeft(markerPos);
+      return (
+        <Tooltip key={trip.dailyTripId}>
+          <TooltipTrigger asChild>
+            <div
+              className="absolute"
+              style={{
+                left: `${markerLeft}%`,
+                width: "20px",
+                top: 0,
+                height: `${ROW_HEIGHT}px`,
+              }}
+            >
+              <div
+                className="absolute rounded-sm flex items-center justify-center text-white cursor-pointer border shadow-sm overflow-hidden"
+                style={{
+                  left: 0,
+                  width: "16px",
+                  top: "10px",
+                  height: "20px",
+                  backgroundColor: "#999",
+                  borderColor: "#777",
+                }}
+                onDoubleClick={() => onTripDoubleClick?.(trip)}
+              >
+                <span className="text-[7px] font-bold">?</span>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs space-y-1 max-w-[280px]">
+            {trip.demand && <p className="font-semibold">{trip.demand}</p>}
+            <p className="text-muted-foreground text-[10px]">Sem datas definidas</p>
+            {trip.statusTrip && <p className="text-muted-foreground text-[10px]">Status: {trip.statusTrip}</p>}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
 
     const minStart = Math.max(Math.min(...allStarts), windowStart);
     const maxEnd = Math.min(Math.max(...allEnds), windowEnd);
@@ -293,6 +361,16 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
           {trip.statusTrip && (
             <p className="text-muted-foreground text-[10px]">Status: {trip.statusTrip}</p>
           )}
+          {(() => {
+            const dep = getOnTimeStatus(trip.startPlanned, trip.startActual, true);
+            const del = getOnTimeStatus(trip.endPlanned, trip.endActual, false);
+            return (
+              <div className="flex items-center gap-1.5 pt-1 border-t border-border/50 mt-1">
+                {dep.category !== "unknown" && <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 whitespace-nowrap", dep.badgeClass)}>Saída: {dep.label}</Badge>}
+                {del.category !== "unknown" && <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 whitespace-nowrap", del.badgeClass)}>Entrega: {del.label}</Badge>}
+              </div>
+            );
+          })()}
         </TooltipContent>
       </Tooltip>
     );
@@ -300,7 +378,7 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
 
   const content = (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col h-full">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {/* Zoom controls - sticky */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20 flex-wrap shrink-0 z-20">
           <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mr-1">Zoom:</span>
@@ -335,8 +413,8 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
         </div>
 
         {/* Scrollable area with sticky header */}
-        <div className="overflow-auto flex-1 min-h-0">
-          <div className="min-w-[900px]">
+        <div className="h-0 min-h-0 flex-1 overflow-auto">
+          <div className="min-w-[900px] min-h-full">
             {/* Sticky column header + time header */}
             <div className="flex border-b border-border bg-muted/30 sticky top-0 z-10">
               <div className="shrink-0 px-3 py-2 text-xs font-semibold text-foreground bg-muted/30" style={{ width: VEHICLE_COL_WIDTH }}>
@@ -353,7 +431,7 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
             </div>
 
             {/* Rows */}
-            {trucks.map((truck, idx) => {
+            {sortedTrucks.map((truck, idx) => {
               const truckTrips = truckTripsMap.get(truck.truckId) || [];
               return (
                 <div key={truck.truckId} className={cn("flex border-b border-border/50 transition-colors", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
@@ -382,7 +460,46 @@ const TripGanttChart: React.FC<TripGanttChartProps> = ({
               );
             })}
 
-            {trucks.length === 0 && (
+            {/* Unassigned trips - collapsible section */}
+            {unassignedTrips.length > 0 && (
+              <Collapsible defaultOpen>
+                <div className="flex items-center border-b border-border bg-muted/20 px-3 py-1.5">
+                  <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group">
+                    <ChevronDown className="h-3 w-3 transition-transform group-data-[state=closed]:-rotate-90" />
+                    Sem Veículo
+                    <Badge variant="secondary" className="text-[9px] h-4 px-1.5">{unassignedTrips.length}</Badge>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  {unassignedTrips.map((trip, idx) => (
+                    <div key={trip.dailyTripId} className={cn("flex border-b border-border/50 transition-colors", (trucks.length + idx) % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                      <div className="shrink-0 px-3 py-2.5 flex flex-col justify-center" style={{ width: VEHICLE_COL_WIDTH }}>
+                        <span className="text-xs font-semibold text-muted-foreground italic truncate max-w-[140px]">
+                          {trip.demand || "--"}
+                        </span>
+                        {trip.statusTrip && <span className="text-[10px] text-muted-foreground">{trip.statusTrip}</span>}
+                      </div>
+                      <div className="flex-1 relative" style={{ height: `${ROW_HEIGHT}px` }}>
+                        {hourLabels.map((_, i) => (
+                          <div key={i} className="absolute top-0 bottom-0 border-l border-border/20" style={{ left: `${(i / hourLabels.length) * 100}%` }} />
+                        ))}
+                        {showNow && <div className="absolute top-0 bottom-0 w-px bg-destructive/70 z-10" style={{ left: `${nowPct}%` }} />}
+                        <div className="absolute left-0 top-0 h-[20px] flex items-center pointer-events-none">
+                          <span className="text-[7px] text-muted-foreground/50 uppercase tracking-wider pl-1">Plan.</span>
+                        </div>
+                        <div className="absolute left-0 top-[20px] h-[19px] flex items-center pointer-events-none">
+                          <span className="text-[7px] text-muted-foreground/50 uppercase tracking-wider pl-1">Exec.</span>
+                        </div>
+                        <div className="absolute left-0 right-0 top-[20px] border-t border-border/10" />
+                        {renderTripBars(trip)}
+                      </div>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {trucks.length === 0 && unassignedTrips.length === 0 && (
               <div className="p-8 text-center text-sm text-muted-foreground">Nenhum veículo com viagens no período.</div>
             )}
           </div>

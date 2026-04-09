@@ -28,6 +28,8 @@ interface LookupSearchFieldProps {
   labelFn?: "codeName" | "codeDescription" | "codeOnly";
   /** Filter param name for text search (e.g. "Filter1String") */
   searchFilterParam?: string;
+  /** Alternate filter param for secondary search (e.g. "Filter2String" to also search by fleetCode) */
+  alternateSearchFilterParam?: string;
   /** Current selected id (or name if displayAsText) */
   value?: string;
   /** Callback when value changes */
@@ -66,6 +68,8 @@ interface LookupSearchFieldProps {
   showActiveFilter?: boolean;
   /** Always force IsActive=1 without showing toggle (for forms that must only allow active drivers) */
   forceActiveOnly?: boolean;
+  /** Only show operational locations (isOperation=true) — passed to LocationSearchModal */
+  filterOperationOnly?: boolean;
 }
 
 interface PaginationMeta {
@@ -116,6 +120,7 @@ export function LookupSearchField({
   endpoint,
   labelFn = "codeName",
   searchFilterParam = "Filter1String",
+  alternateSearchFilterParam,
   value,
   onChange,
   placeholder = "Pesquisar...",
@@ -135,6 +140,7 @@ export function LookupSearchField({
   extraParams,
   showActiveFilter: showActiveFilterProp,
   forceActiveOnly = false,
+  filterOperationOnly = false,
 }: LookupSearchFieldProps) {
   const { t } = useTranslation();
   const showActiveFilter = !forceActiveOnly && (showActiveFilterProp ?? (endpoint === "Drivers"));
@@ -230,10 +236,22 @@ export function LookupSearchField({
         return;
       }
       setLoading(true);
-      fetchSearch(endpoint, searchFilterParam, query, 10, 1, extraParams)
-        .then(({ items }) => {
-          const transformed = items.map(normalizeLookupItem);
-          // Sort alphabetically by label
+      const searches = [fetchSearch(endpoint, searchFilterParam, query, 10, 1, extraParams)];
+      if (alternateSearchFilterParam) {
+        searches.push(fetchSearch(endpoint, alternateSearchFilterParam, query, 10, 1, extraParams));
+      }
+      Promise.all(searches)
+        .then((results) => {
+          const allItems = results.flatMap(r => r.items);
+          // Deduplicate by id
+          const seen = new Set<string>();
+          const unique = allItems.filter(item => {
+            const id = String(item.id || "");
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          });
+          const transformed = unique.map(normalizeLookupItem);
           transformed.sort((a, b) => getLookupLabel(a, labelFn).toLowerCase().localeCompare(getLookupLabel(b, labelFn).toLowerCase()));
           setSuggestions(transformed);
           setShowSuggestions(true);
@@ -241,7 +259,7 @@ export function LookupSearchField({
         .catch(() => setSuggestions([]))
         .finally(() => setLoading(false));
     },
-    [endpoint, searchFilterParam, extraParams, normalizeLookupItem, labelFn],
+    [endpoint, searchFilterParam, alternateSearchFilterParam, extraParams, normalizeLookupItem, labelFn],
   );
 
   const handleInputChange = (text: string) => {
@@ -296,8 +314,21 @@ export function LookupSearchField({
           }
         }
 
-        const { items, pagination } = await fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page, mergedParams);
-        let transformed = items.map(normalizeLookupItem);
+        const searches = [fetchSearch(endpoint, searchFilterParam, modalSearch, 10, page, mergedParams)];
+        if (alternateSearchFilterParam && modalSearch.trim()) {
+          searches.push(fetchSearch(endpoint, alternateSearchFilterParam, modalSearch, 10, page, mergedParams));
+        }
+        const results = await Promise.all(searches);
+        const allItems = results.flatMap(r => r.items);
+        const seen = new Set<string>();
+        const uniqueItems = allItems.filter(item => {
+          const id = String(item.id || "");
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        const pagination = results[0].pagination;
+        let transformed = uniqueItems.map(normalizeLookupItem);
 
         // Client-side safety: enforce active/inactive filter even if backend ignores IsActive
         if (endpoint === "Drivers" && (mergedParams.IsActive === "1" || mergedParams.IsActive === "0")) {
@@ -314,7 +345,7 @@ export function LookupSearchField({
         setModalLoading(false);
       }
     },
-    [endpoint, searchFilterParam, modalSearch, extraParams, showActiveFilter, modalActiveOnly, forceActiveOnly, normalizeLookupItem, isDriverActive, labelFn],
+    [endpoint, searchFilterParam, alternateSearchFilterParam, modalSearch, extraParams, showActiveFilter, modalActiveOnly, forceActiveOnly, normalizeLookupItem, isDriverActive, labelFn],
   );
 
   const openModal = () => {
@@ -788,6 +819,7 @@ export function LookupSearchField({
             const normalized = normalizeLookupItem(item);
             selectItem(normalized);
           }}
+          filterOperationOnly={filterOperationOnly}
         />
       )}
     </>

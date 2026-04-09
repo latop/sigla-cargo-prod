@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Plus, Download, Filter, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Download, Filter, MoreHorizontal, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,8 +48,14 @@ export function MockPage({ title, icon, stats, columns, data, statusField, statu
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4 p-4"
     >
+      {/* Mock data banner */}
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-60">
         {stats.map((s, i) => (
           <Card key={i}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -73,7 +79,7 @@ export function MockPage({ title, icon, stats, columns, data, statusField, statu
       </div>
 
       {/* Toolbar */}
-      <Card>
+      <Card className="opacity-60">
         <CardHeader className="pb-3 pt-4 px-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1">

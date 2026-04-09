@@ -15,6 +15,60 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.19.0",
+    date: "2026-04-09",
+    type: "improvement",
+    changes: [
+      {
+        pt: "Coordenação de Viagens (Gantt): ordenação inteligente — veículos com viagem no período aparecem primeiro (por placa), seguidos pelos veículos sem viagem (por placa)",
+        en: "Trip Coordination (Gantt): smart sorting — vehicles with trips in the period appear first (by plate), followed by vehicles without trips (by plate)",
+        es: "Coordinación de Viajes (Gantt): ordenación inteligente — vehículos con viaje en el período aparecen primero (por placa), seguidos por vehículos sin viaje (por placa)",
+      },
+      {
+        pt: "Coordenação de Viagens: remoção dos indicadores OnTime Saídas e OnTime Entregas da aba Gantt",
+        en: "Trip Coordination: removed OnTime Departures and OnTime Deliveries indicators from the Gantt tab",
+        es: "Coordinación de Viajes: eliminación de los indicadores OnTime Salidas y OnTime Entregas de la pestaña Gantt",
+      },
+      {
+        pt: "Correção de layout na aba Gantt da Coordenação de Viagens — eliminação de área branca abaixo da paginação com propagação correta de altura via flex chain",
+        en: "Gantt tab layout fix in Trip Coordination — eliminated whitespace below pagination with correct height propagation via flex chain",
+        es: "Corrección de layout en la pestaña Gantt de Coordinación de Viajes — eliminación de área blanca debajo de la paginación con propagación correcta de altura via flex chain",
+      },
+      {
+        pt: "Manuais de Usuário e Técnico atualizados com ordenação de veículos no Gantt e melhorias de layout",
+        en: "User and Technical Manuals updated with Gantt vehicle sorting and layout improvements",
+        es: "Manuales de Usuario y Técnico actualizados con ordenación de vehículos en el Gantt y mejoras de layout",
+      },
+    ],
+  },
+  {
+    version: "1.18.0",
+    date: "2026-04-09",
+    type: "feature",
+    changes: [
+      {
+        pt: "Hook unificado useOnTimeData para cálculo de pontualidade compartilhado entre Dashboard, Coordenação de Viagens e Chegadas e Partidas, eliminando duplicação de código",
+        en: "Unified useOnTimeData hook for shared punctuality calculation across Dashboard, Trip Coordination and Arrivals & Departures, eliminating code duplication",
+        es: "Hook unificado useOnTimeData para cálculo de puntualidad compartido entre Dashboard, Coordinación de Viajes y Llegadas y Salidas, eliminando duplicación de código",
+      },
+      {
+        pt: "Indicadores de pontualidade (OnTime) na tela de Chegadas e Partidas — badges com % no horário, atrasados e pendentes nos cabeçalhos dos painéis",
+        en: "Punctuality (OnTime) indicators on Arrivals & Departures screen — badges showing on-time %, delayed and pending counts in panel headers",
+        es: "Indicadores de puntualidad (OnTime) en la pantalla de Llegadas y Salidas — badges con % a tiempo, retrasados y pendientes en los encabezados de los paneles",
+      },
+      {
+        pt: "Frequência de Localidade: inputs de horário nativos do navegador e validação de faixas de data/hora para impedir intervalos negativos",
+        en: "Location Frequency: native browser time inputs and date/time range validation to prevent negative intervals",
+        es: "Frecuencia de Localidad: inputs de horario nativos del navegador y validación de rangos de fecha/hora para impedir intervalos negativos",
+      },
+      {
+        pt: "Manual Técnico atualizado com documentação completa da tela de Chegadas e Partidas (endpoints, componentes, features)",
+        en: "Technical Manual updated with full Arrivals & Departures screen documentation (endpoints, components, features)",
+        es: "Manual Técnico actualizado con documentación completa de la pantalla de Llegadas y Salidas (endpoints, componentes, features)",
+      },
+    ],
+  },
+  {
     version: "1.17.0",
     date: "2026-03-30",
     type: "feature",
@@ -471,7 +525,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.17.0";
+export const APP_VERSION = "1.19.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Radio, Users, CheckCircle2, Clock, Moon, Search, Filter, Download, MoreHorizontal, Truck, MapPin, Building2 } from "lucide-react";
+import { Radio, Users, CheckCircle2, Clock, Moon, Search, Filter, Download, MoreHorizontal, Truck, MapPin, Building2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -218,8 +218,14 @@ export default function DriverAvailabilityPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4 p-4"
     >
+      {/* Mock data banner */}
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
+
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-60">
         {currentStats.map((s, i) => (
           <Card key={i}>
             <CardContent className="p-4 flex items-center gap-3">

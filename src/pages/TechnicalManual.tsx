@@ -83,6 +83,7 @@ const screens: ScreenDoc[] = [
       "Duplo clique em TRIP abre DailyTripEditPanel",
       "Nova Viagem via NewTripDialog",
       "Paginação server-side (pageSize: 50) com scroll infinito",
+      "Ordenação Gantt: veículos com viagem primeiro (por placa), depois veículos sem viagem (por placa)",
       "Listagem: colunas Placa, Demanda, Origem, Destino, Início/Fim Plan., Início/Fim Real, Motorista, Status",
       "Listagem filtra apenas TRIP e TRIP EXEC",
     ],
@@ -144,14 +145,20 @@ const screens: ScreenDoc[] = [
 
   // --- Monitoramento ---
   {
-    title: "Saídas e Chegadas",
+    title: "Chegadas e Partidas",
     route: "/departures-and-arrivals",
-    component: "ComingSoonPage.tsx",
+    component: "ArrivalDeparturePage.tsx",
     menuGroup: "Monitoramento",
-    description: "Pendente de liberação. Esta função será liberada em breve.",
+    description: "Painel de aeroporto (split-screen) para acompanhamento de chegadas e partidas com indicadores de pontualidade (OnTime). Utiliza hook compartilhado useOnTimeData para exibir % no horário, atrasados e pendentes.",
     type: "custom",
-    endpoints: [],
-    sharedComponents: [],
+    endpoints: [
+      { method: "GET", path: "/gantt/GetArrivalDeparture?locationCode=&direction=", description: "Lista viagens de chegada ou partida por localidade" },
+      { method: "GET", path: "/Location/GetLocationRelease", description: "Lista localidades disponíveis" },
+      { method: "GET", path: "/gantt/GetDailyTripsByPeriodGantt", description: "Dados OnTime (via useOnTimeData hook)" },
+    ],
+    sharedComponents: ["useOnTimeData"],
+    filters: ["locationCode (seletor com busca)", "direction (ARR/DEP)"],
+    features: ["Split-screen Chegadas/Partidas", "Badges OnTime (% no horário, atrasados, pendentes)", "Auto-refresh 5min", "Modo tela cheia", "Tema claro/escuro"],
   },
   {
     title: "Liberação de Viagens",

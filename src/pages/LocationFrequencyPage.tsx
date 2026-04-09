@@ -9,42 +9,96 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LookupSearchField } from "@/components/LookupSearchField";
-import { Search, Plus, Trash2, Clock, Package, Loader2, X } from "lucide-react";
+import { DatePickerField } from "@/components/DatePickerField";
+import { Search, Plus, Trash2, Clock, Package, Loader2, X, Pencil, Save } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface LocationFrequency {
+/* ── API data shape ── */
+interface LocationFrequencyAPI {
   id?: string;
   locationId: string;
-  locationCode?: string;
-  locationName?: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  loadingCapacity: number;
-  unloadingCapacity: number;
+  startDate: string;
+  endDate: string;
+  freqMon: number;
+  freqTue: number;
+  freqWed: number;
+  freqThu: number;
+  freqFri: number;
+  freqSat: number;
+  freqSun: number;
+  startOperationTime: string;
+  endOperationTime: string;
+  qtyOperations: number;
+  movType: string;
 }
 
 const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0]; // Mon=1 ... Sat=6, Sun=0
+const FREQ_FIELDS = ["freqMon", "freqTue", "freqWed", "freqThu", "freqFri", "freqSat", "freqSun"] as const;
 
-const DEFAULT_TIME_SLOTS = [
-  "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
-  "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
-  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
-  "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
-];
+const MOV_TYPES = ["CARGA", "DESCARGA"] as const;
+
+function parseTime(raw: string | null | undefined): string {
+  if (!raw) return "00:00";
+  const match = raw.match(/(\d{2}:\d{2})/);
+  return match ? match[1] : "00:00";
+}
+
+function toApiTime(hhmm: string): string {
+  return `1970-01-01T${hhmm}:00`;
+}
+
+function formatDate(raw: string | null | undefined): string {
+  if (!raw) return "--";
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return "--";
+  return d.toLocaleDateString("pt-BR");
+}
+
+/** Extract YYYY-MM-DD from ISO string */
+function toInputDate(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw.substring(0, 10);
+}
+
+function getActiveDays(item: LocationFrequencyAPI): boolean[] {
+  return FREQ_FIELDS.map((f) => (item[f] ?? 0) > 0);
+}
+
+function todayStr(): string {
+  return new Date().toISOString().substring(0, 10);
+}
+
+function buildPayload(
+  locationId: string,
+  startDate: string,
+  endDate: string,
+  startTime: string,
+  endTime: string,
+  movType: string,
+  qtyOps: number,
+  days: boolean[],
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    locationId,
+    startDate: `${startDate}T00:00:00`,
+    endDate: `${endDate}T00:00:00`,
+    startOperationTime: toApiTime(startTime),
+    endOperationTime: toApiTime(endTime),
+    qtyOperations: qtyOps,
+    movType,
+  };
+  FREQ_FIELDS.forEach((f, i) => {
+    payload[f] = days[i] ? 1 : 0;
+  });
+  return payload;
+}
 
 export default function LocationFrequencyPage() {
   const { t } = useTranslation();
@@ -54,26 +108,35 @@ export default function LocationFrequencyPage() {
   const [locationCode, setLocationCode] = useState("");
   const [locationName, setLocationName] = useState("");
 
-  const [frequencies, setFrequencies] = useState<LocationFrequency[]>([]);
+  const [frequencies, setFrequencies] = useState<LocationFrequencyAPI[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<number>(1);
   const [hasSearched, setHasSearched] = useState(false);
 
   // New slot form
-  const [newStartTime, setNewStartTime] = useState("06:00");
-  const [newEndTime, setNewEndTime] = useState("07:00");
-  const [newLoadCap, setNewLoadCap] = useState(1);
-  const [newUnloadCap, setNewUnloadCap] = useState(1);
+  const [newStartDate, setNewStartDate] = useState(todayStr());
+  const [newEndDate, setNewEndDate] = useState("");
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
+  const [newMovType, setNewMovType] = useState<string>("DESCARGA");
+  const [newQtyOps, setNewQtyOps] = useState(1);
+  const [newDays, setNewDays] = useState<boolean[]>([true, true, true, true, true, true, false]);
+
+  // Edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
+  const [editMovType, setEditMovType] = useState("DESCARGA");
+  const [editQtyOps, setEditQtyOps] = useState(1);
+  const [editDays, setEditDays] = useState<boolean[]>([true, true, true, true, true, false, false]);
 
   // Delete confirmation
-  const [deleteTarget, setDeleteTarget] = useState<LocationFrequency | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LocationFrequencyAPI | null>(null);
 
-  const dayLabel = (dayNum: number) => {
-    const idx = DAY_NUMBERS.indexOf(dayNum);
-    if (idx === -1) return "";
-    return t(`line.${DAY_KEYS[idx]}`);
-  };
+  const dayLabel = (idx: number) => t(`line.${DAY_KEYS[idx]}`);
+  const dayLabelShort = (idx: number) => dayLabel(idx).substring(0, 3);
 
   const fetchFrequencies = useCallback(async () => {
     if (!locationId) {
@@ -86,16 +149,8 @@ export default function LocationFrequencyPage() {
       const res = await authFetch(`/LocationFrequency?LocationId=${locationId}&PageSize=500`);
       if (res.ok) {
         const data = await res.json();
-        const items = Array.isArray(data) ? data : data.items || data.data || [];
-        setFrequencies(items.map((item: any) => ({
-          id: item.id || item.locationFrequencyId,
-          locationId: item.locationId,
-          dayOfWeek: item.dayOfWeek,
-          startTime: item.startTime?.substring(0, 5) || item.startTime,
-          endTime: item.endTime?.substring(0, 5) || item.endTime,
-          loadingCapacity: item.loadingCapacity ?? item.qtyLoading ?? 0,
-          unloadingCapacity: item.unloadingCapacity ?? item.qtyUnloading ?? 0,
-        })));
+        const items: LocationFrequencyAPI[] = Array.isArray(data) ? data : data.items || data.data || [];
+        setFrequencies(items);
       } else {
         toast.error(t("common.genericError"));
       }
@@ -110,39 +165,52 @@ export default function LocationFrequencyPage() {
     setLocationId(loc.id || loc.locationId);
     setLocationCode(loc.code);
     setLocationName(loc.name || loc.description);
-    
     setFrequencies([]);
     setHasSearched(false);
+    setEditId(null);
   };
 
-  const dayFrequencies = frequencies
-    .filter((f) => f.dayOfWeek === selectedDay)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const toggleNewDay = (idx: number) => {
+    setNewDays((prev) => { const c = [...prev]; c[idx] = !c[idx]; return c; });
+  };
 
+  const toggleEditDay = (idx: number) => {
+    setEditDays((prev) => { const c = [...prev]; c[idx] = !c[idx]; return c; });
+  };
+
+  /* ── CREATE ── */
   const addSlot = async () => {
     if (!locationId) return;
+    if (!newDays.some(Boolean)) {
+      toast.error(t("locationFrequency.selectAtLeastOneDay"));
+      return;
+    }
+    if (!newStartDate || !newEndDate) {
+      toast.error("Informe a vigência início e fim.");
+      return;
+    }
+    if (newStartDate > newEndDate) {
+      toast.error("Data início da vigência deve ser menor ou igual à data fim.");
+      return;
+    }
+    if (!newStartTime || !newEndTime) {
+      toast.error("Informe o horário de início e fim.");
+      return;
+    }
     if (newStartTime >= newEndTime) {
-      toast.error(t("locationFrequency.invalidTimeRange"));
+      toast.error("Horário de início deve ser menor que o horário de fim.");
       return;
     }
     setSaving(true);
     try {
-      const payload = {
-        locationId,
-        dayOfWeek: selectedDay,
-        startTime: newStartTime,
-        endTime: newEndTime,
-        loadingCapacity: newLoadCap,
-        unloadingCapacity: newUnloadCap,
-      };
-      const res = await authFetch("/LocationFrequency", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const payload = buildPayload(locationId, newStartDate, newEndDate, newStartTime, newEndTime, newMovType, newQtyOps, newDays);
+      const res = await authFetch("/LocationFrequency", { method: "POST", body: JSON.stringify(payload) });
       if (res.ok) {
         toast.success(t("common.saveSuccess"));
         await fetchFrequencies();
       } else {
+        const errBody = await res.text();
+        console.error("[LocationFrequency] POST error:", res.status, errBody);
         toast.error(t("common.genericError"));
       }
     } catch {
@@ -152,7 +220,64 @@ export default function LocationFrequencyPage() {
     }
   };
 
-  const deleteSlot = async (item: LocationFrequency) => {
+  /* ── EDIT ── */
+  const startEdit = (item: LocationFrequencyAPI) => {
+    setEditId(item.id || null);
+    setEditStartDate(toInputDate(item.startDate));
+    setEditEndDate(toInputDate(item.endDate));
+    setEditStartTime(parseTime(item.startOperationTime));
+    setEditEndTime(parseTime(item.endOperationTime));
+    setEditMovType(item.movType);
+    setEditQtyOps(item.qtyOperations);
+    setEditDays(getActiveDays(item));
+  };
+
+  const cancelEdit = () => setEditId(null);
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    if (!editDays.some(Boolean)) {
+      toast.error(t("locationFrequency.selectAtLeastOneDay"));
+      return;
+    }
+    if (!editStartDate || !editEndDate) {
+      toast.error("Informe a vigência início e fim.");
+      return;
+    }
+    if (editStartDate > editEndDate) {
+      toast.error("Data início da vigência deve ser menor ou igual à data fim.");
+      return;
+    }
+    if (!editStartTime || !editEndTime) {
+      toast.error("Informe o horário de início e fim.");
+      return;
+    }
+    if (editStartTime >= editEndTime) {
+      toast.error("Horário de início deve ser menor que o horário de fim.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = buildPayload(locationId, editStartDate, editEndDate, editStartTime, editEndTime, editMovType, editQtyOps, editDays);
+      const res = await authFetch(`/LocationFrequency/${editId}`, { method: "PUT", body: JSON.stringify(payload) });
+      if (res.ok) {
+        toast.success(t("common.saveSuccess"));
+        setEditId(null);
+        await fetchFrequencies();
+      } else {
+        const errBody = await res.text();
+        console.error("[LocationFrequency] PUT error:", res.status, errBody);
+        toast.error(t("common.genericError"));
+      }
+    } catch {
+      toast.error(t("common.genericError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ── DELETE ── */
+  const deleteItem = async (item: LocationFrequencyAPI) => {
     if (!item.id) return;
     setSaving(true);
     try {
@@ -171,56 +296,25 @@ export default function LocationFrequencyPage() {
     }
   };
 
-  const updateSlot = async (item: LocationFrequency) => {
-    if (!item.id) return;
-    setSaving(true);
-    try {
-      const res = await authFetch(`/LocationFrequency/${item.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          id: item.id,
-          locationId: item.locationId || locationId,
-          dayOfWeek: item.dayOfWeek,
-          startTime: item.startTime,
-          endTime: item.endTime,
-          loadingCapacity: item.loadingCapacity,
-          unloadingCapacity: item.unloadingCapacity,
-        }),
-      });
-      if (res.ok) {
-        toast.success(t("common.saveSuccess"));
-      } else {
-        toast.error(t("common.genericError"));
-      }
-    } catch {
-      toast.error(t("common.genericError"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Summary: count slots per day
-  const daySummary = DAY_NUMBERS.map((dayNum) => {
-    const count = frequencies.filter((f) => f.dayOfWeek === dayNum).length;
-    const totalLoad = frequencies
-      .filter((f) => f.dayOfWeek === dayNum)
-      .reduce((s, f) => s + f.loadingCapacity, 0);
-    const totalUnload = frequencies
-      .filter((f) => f.dayOfWeek === dayNum)
-      .reduce((s, f) => s + f.unloadingCapacity, 0);
-    return { dayNum, count, totalLoad, totalUnload };
+  const sortedFrequencies = [...frequencies].sort((a, b) => {
+    const sdA = a.startDate || "";
+    const sdB = b.startDate || "";
+    if (sdA !== sdB) return sdA.localeCompare(sdB);
+    const stA = a.startOperationTime || "";
+    const stB = b.startOperationTime || "";
+    return stA.localeCompare(stB);
   });
+
+  /* TimeInput is defined outside the component to avoid re-mount — see top of file */
 
   return (
     <div className="space-y-4 p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-semibold text-foreground">
-            {t("menu.locationFrequency")}
-          </h1>
-        </div>
+      <div className="flex items-center gap-2">
+        <Clock className="h-5 w-5 text-primary" />
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("menu.locationFrequency")}
+        </h1>
       </div>
 
       {/* Location selector */}
@@ -228,7 +322,9 @@ export default function LocationFrequencyPage() {
         <CardContent className="pt-4 pb-4">
           <div className="grid grid-cols-6 gap-3">
             <div className="col-span-3">
-              <Label className="text-xs mb-1 block">{t("menu.location")} <span className="text-destructive">✱</span></Label>
+              <Label className="text-xs mb-1 block whitespace-nowrap">
+                {t("menu.location")} <span className="text-destructive">✱</span>
+              </Label>
               <LookupSearchField
                 endpoint="Location"
                 value={locationId}
@@ -250,7 +346,6 @@ export default function LocationFrequencyPage() {
               />
             </div>
           </div>
-          {/* Toolbar */}
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={fetchFrequencies} disabled={!locationId || loading}>
@@ -258,141 +353,212 @@ export default function LocationFrequencyPage() {
                 {t("common.search")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => {
-                setLocationId("");
-                setLocationCode("");
-                setLocationName("");
-                setFrequencies([]);
-                setHasSearched(false);
+                setLocationId(""); setLocationCode(""); setLocationName("");
+                setFrequencies([]); setHasSearched(false); setEditId(null);
               }}>
-              <X className="h-3.5 w-3.5 mr-1" />{t("common.clear")}
+                <X className="h-3.5 w-3.5 mr-1" />{t("common.clear")}
               </Button>
             </div>
-            <Button size="sm" onClick={fetchFrequencies} disabled={!locationId}>
-              <Plus className="h-3.5 w-3.5 mr-1" />{t("common.new")}
-            </Button>
           </div>
         </CardContent>
       </Card>
 
       {hasSearched && locationId && (
         <>
-          {/* Day tabs - visual summary */}
-          <div className="flex gap-2 flex-wrap">
-            {daySummary.map(({ dayNum, count, totalLoad, totalUnload }) => (
-              <button
-                key={dayNum}
-                onClick={() => setSelectedDay(dayNum)}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg border transition-colors min-w-[90px] ${
-                  selectedDay === dayNum
-                    ? "border-primary bg-primary/10 text-primary"
-                    : count > 0
-                    ? "border-border bg-card text-foreground hover:bg-muted"
-                    : "border-dashed border-muted-foreground/30 bg-muted/30 text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span className="text-sm font-medium">{dayLabel(dayNum)}</span>
-                {count > 0 ? (
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                      C:{totalLoad}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      D:{totalUnload}
-                    </Badge>
-                  </div>
-                ) : (
-                  <span className="text-[10px] mt-1">—</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Grid for selected day */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                {dayLabel(selectedDay)} — {t("locationFrequency.timeSlots")}
+                {t("locationFrequency.timeSlots")}
                 <Badge variant="outline" className="ml-auto">
-                  {dayFrequencies.length} {dayFrequencies.length === 1 ? "faixa" : "faixas"}
+                  {frequencies.length} {frequencies.length === 1 ? t("locationFrequency.slot") : t("locationFrequency.slots")}
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Existing slots */}
-              {dayFrequencies.length > 0 ? (
-                <div className="rounded-md border">
+            <CardContent className="space-y-3">
+              {/* ── ADD FORM (2 lines) ── */}
+              <div className="space-y-2 rounded-md border border-dashed border-primary/30 p-3 bg-primary/5">
+                <div className="flex items-end gap-2 flex-wrap">
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Vigência Início <span className="text-destructive">✱</span></Label>
+                    <DatePickerField
+                      value={newStartDate ? `${newStartDate}T00:00:00` : null}
+                      onChange={(v) => setNewStartDate(v ? v.substring(0, 10) : "")}
+                      className="w-[150px]"
+                      inputClassName="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Vigência Fim <span className="text-destructive">✱</span></Label>
+                    <DatePickerField
+                      value={newEndDate ? `${newEndDate}T00:00:00` : null}
+                      onChange={(v) => setNewEndDate(v ? v.substring(0, 10) : "")}
+                      className="w-[150px]"
+                      inputClassName="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Hr. Início <span className="text-destructive">✱</span></Label>
+                    <input type="time" className="h-7 w-[90px] text-xs font-mono rounded-md border border-input bg-background px-2" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Hr. Fim <span className="text-destructive">✱</span></Label>
+                    <input type="time" className="h-7 w-[90px] text-xs font-mono rounded-md border border-input bg-background px-2" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Tipo Mov.</Label>
+                    <Select value={newMovType} onValueChange={setNewMovType}>
+                      <SelectTrigger className="w-[110px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MOV_TYPES.map((mt) => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs whitespace-nowrap">Qtd. Op.</Label>
+                    <Input type="number" min={0} className="h-7 w-16 text-xs" value={newQtyOps} onChange={(e) => setNewQtyOps(parseInt(e.target.value) || 0)} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {DAY_KEYS.map((_, idx) => (
+                    <label key={idx} className="flex items-center gap-1 cursor-pointer">
+                      <Checkbox checked={newDays[idx]} onCheckedChange={() => toggleNewDay(idx)} className="h-3.5 w-3.5" />
+                      <span className="text-xs">{dayLabelShort(idx)}</span>
+                    </label>
+                  ))}
+                  <Button onClick={addSlot} disabled={saving || !newDays.some(Boolean)} size="sm" className="h-7 text-xs ml-auto">
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                    {t("locationFrequency.addNewSlot")}
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* ── TABLE ── */}
+              {sortedFrequencies.length > 0 ? (
+                <div className="rounded-md border overflow-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[140px]">{t("locationFrequency.start")}</TableHead>
-                        <TableHead className="w-[140px]">{t("locationFrequency.end")}</TableHead>
-                        <TableHead className="w-[140px]">
-                          <div className="flex items-center gap-1">
-                            <Package className="h-3.5 w-3.5" />
-                            {t("locationFrequency.loading")}
-                          </div>
-                        </TableHead>
-                        <TableHead className="w-[140px]">
-                          <div className="flex items-center gap-1">
-                            <Package className="h-3.5 w-3.5" />
-                            {t("locationFrequency.unloading")}
-                          </div>
-                        </TableHead>
-                        <TableHead className="w-[100px] text-right">{t("common.actions")}</TableHead>
+                        <TableHead className="text-xs px-2">Vig. Início</TableHead>
+                        <TableHead className="text-xs px-2">Vig. Fim</TableHead>
+                        <TableHead className="text-xs px-2">Hr. Início</TableHead>
+                        <TableHead className="text-xs px-2">Hr. Fim</TableHead>
+                        <TableHead className="text-xs px-2">Tipo Mov.</TableHead>
+                        <TableHead className="text-xs px-2">Qtd. Op.</TableHead>
+                        <TableHead className="text-xs px-2">{t("locationFrequency.daysOfWeek")}</TableHead>
+                        <TableHead className="text-xs px-2 text-right w-[80px]">{t("common.actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dayFrequencies.map((slot, idx) => (
-                        <TableRow key={slot.id || idx} className={idx % 2 === 1 ? "bg-muted/30" : ""}>
-                          <TableCell className="font-mono text-sm">{slot.startTime}</TableCell>
-                          <TableCell className="font-mono text-sm">{slot.endTime}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min={0}
-                              className="h-8 w-20"
-                              value={slot.loadingCapacity}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setFrequencies((prev) =>
-                                  prev.map((f) =>
-                                    f.id === slot.id ? { ...f, loadingCapacity: val } : f
-                                  )
-                                );
-                              }}
-                              onBlur={() => updateSlot({ ...slot, loadingCapacity: slot.loadingCapacity })}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min={0}
-                              className="h-8 w-20"
-                              value={slot.unloadingCapacity}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setFrequencies((prev) =>
-                                  prev.map((f) =>
-                                    f.id === slot.id ? { ...f, unloadingCapacity: val } : f
-                                  )
-                                );
-                              }}
-                              onBlur={() => updateSlot({ ...slot, unloadingCapacity: slot.unloadingCapacity })}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => setDeleteTarget(slot)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {sortedFrequencies.map((item, idx) => {
+                        const isEditing = editId === item.id;
+                        const activeDays = getActiveDays(item);
+
+                        if (isEditing) {
+                          return (
+                            <TableRow key={item.id} className="bg-primary/5">
+                              <TableCell className="px-2 py-1">
+                                <DatePickerField
+                                  value={editStartDate ? `${editStartDate}T00:00:00` : null}
+                                  onChange={(v) => setEditStartDate(v ? v.substring(0, 10) : "")}
+                                  className="w-[140px]"
+                                  inputClassName="text-xs"
+                                />
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <DatePickerField
+                                  value={editEndDate ? `${editEndDate}T00:00:00` : null}
+                                  onChange={(v) => setEditEndDate(v ? v.substring(0, 10) : "")}
+                                  className="w-[140px]"
+                                  inputClassName="text-xs"
+                                />
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <input type="time" className="h-7 w-[90px] text-xs font-mono rounded-md border border-input bg-background px-2" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} />
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <input type="time" className="h-7 w-[90px] text-xs font-mono rounded-md border border-input bg-background px-2" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <Select value={editMovType} onValueChange={setEditMovType}>
+                                  <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {MOV_TYPES.map((mt) => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <Input type="number" min={0} className="h-7 w-14 text-xs" value={editQtyOps} onChange={(e) => setEditQtyOps(parseInt(e.target.value) || 0)} />
+                              </TableCell>
+                              <TableCell className="px-2 py-1">
+                                <div className="flex gap-1 flex-wrap">
+                                  {DAY_KEYS.map((_, dayIdx) => (
+                                    <label key={dayIdx} className="cursor-pointer">
+                                      <Badge
+                                        variant={editDays[dayIdx] ? "default" : "outline"}
+                                        className={`text-[10px] px-1.5 py-0 cursor-pointer ${!editDays[dayIdx] ? "opacity-40" : ""}`}
+                                        onClick={() => toggleEditDay(dayIdx)}
+                                      >
+                                        {dayLabelShort(dayIdx)}
+                                      </Badge>
+                                    </label>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-2 py-1 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={saveEdit} disabled={saving}>
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelEdit}>
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        return (
+                          <TableRow key={item.id || idx} className={idx % 2 === 1 ? "bg-muted/30" : ""}>
+                            <TableCell className="text-xs px-2 py-1">{formatDate(item.startDate)}</TableCell>
+                            <TableCell className="text-xs px-2 py-1">{formatDate(item.endDate)}</TableCell>
+                            <TableCell className="font-mono text-xs px-2 py-1">{parseTime(item.startOperationTime)}</TableCell>
+                            <TableCell className="font-mono text-xs px-2 py-1">{parseTime(item.endOperationTime)}</TableCell>
+                            <TableCell className="px-2 py-1">
+                              <Badge variant={item.movType === "CARGA" ? "default" : "secondary"} className="text-[10px]">
+                                {item.movType}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs px-2 py-1">{item.qtyOperations}</TableCell>
+                            <TableCell className="px-2 py-1">
+                              <div className="flex gap-1 flex-wrap">
+                                {DAY_KEYS.map((_, dayIdx) => (
+                                  <Badge
+                                    key={dayIdx}
+                                    variant={activeDays[dayIdx] ? "default" : "outline"}
+                                    className={`text-[10px] px-1.5 py-0 ${!activeDays[dayIdx] ? "opacity-30" : ""}`}
+                                  >
+                                    {dayLabelShort(dayIdx)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-1 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(item)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(item)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -401,78 +567,27 @@ export default function LocationFrequencyPage() {
                   {t("locationFrequency.noSlots")}
                 </div>
               )}
-
-              {/* Add new slot */}
-              <Separator />
-              <div className="flex items-end gap-3 flex-wrap">
-                <div>
-                  <Label className="text-xs">{t("locationFrequency.start")}</Label>
-                  <Select value={newStartTime} onValueChange={setNewStartTime}>
-                    <SelectTrigger className="w-[100px] h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_TIME_SLOTS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">{t("locationFrequency.end")}</Label>
-                  <Select value={newEndTime} onValueChange={setNewEndTime}>
-                    <SelectTrigger className="w-[100px] h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_TIME_SLOTS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">{t("locationFrequency.loading")}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    className="h-8 w-20"
-                    value={newLoadCap}
-                    onChange={(e) => setNewLoadCap(parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">{t("locationFrequency.unloading")}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    className="h-8 w-20"
-                    value={newUnloadCap}
-                    onChange={(e) => setNewUnloadCap(parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <Button onClick={addSlot} disabled={saving} size="sm">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                  {t("common.add")}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </>
       )}
-
-      {/* Location search modal removed - using LookupSearchField with forceModal */}
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {deleteTarget && t("locationFrequency.confirmDeleteSlot", {
+                start: parseTime(deleteTarget.startOperationTime),
+                end: parseTime(deleteTarget.endOperationTime),
+                days: getActiveDays(deleteTarget).map((a, i) => a ? dayLabel(i) : null).filter(Boolean).join(", "),
+              })}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteTarget && deleteSlot(deleteTarget)}>
+            <AlertDialogAction onClick={() => deleteTarget && deleteItem(deleteTarget)}>
               {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>

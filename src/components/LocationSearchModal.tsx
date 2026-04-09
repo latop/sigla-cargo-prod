@@ -95,7 +95,7 @@ export function LocationSearchModal({ open, onOpenChange, onSelect, filterOperat
       const params = new URLSearchParams();
       if (filterCode.trim()) params.set("Filter1String", filterCode.trim());
       if (filterName.trim()) params.set("Filter4String", filterName.trim());
-      if (filterIntCode.trim()) params.set("Filter2String", filterIntCode.trim());
+      if (filterIntCode.trim()) params.set("Filter3String", filterIntCode.trim());
       if (filterLocGroupId !== "all") params.set("Filter1Id", filterLocGroupId);
       if (filterLocTypeId !== "all") params.set("Filter2Id", filterLocTypeId);
       if (filterOperationOnly) params.set("Filter1Bool", "true");

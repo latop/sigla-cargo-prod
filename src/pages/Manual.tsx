@@ -216,6 +216,7 @@ const manualData: ManualGroup[] = [
           "Duplo clique na barra do Gantt ou na linha da tabela abre o painel lateral de edição.",
         extra:
           "• Suporte a zoom no Gantt (6h, 12h, 24h).\n" +
+          "• Ordenação inteligente no Gantt: veículos com viagem no período aparecem primeiro (ordenados por placa), seguidos pelos veículos sem viagem (também ordenados por placa).\n" +
           "• Paginação server-side com seletor de registros por página.\n" +
           "• Exportação de dados em Excel e PDF.",
       },
@@ -236,6 +237,7 @@ const manualData: ManualGroup[] = [
           "• Chegadas (esquerda, tema azul) — Hora, Data, Localidade de Origem, Placa, Cód. Frota, Motorista e Status.\n" +
           "• Partidas (direita, tema âmbar) — Hora, Data, Localidade de Destino, Placa, Cód. Frota, Motorista e Status.",
         extra:
+          "• Indicadores de Pontualidade (OnTime) — Badges no cabeçalho de cada painel exibem % no horário, quantidade de atrasados e pendentes (dados do hook compartilhado useOnTimeData).\n" +
           "• Lógica de cores por status: Vermelho (Atrasado > 15min), Amarelo (Atenção < 1h), Verde (Saiu - DEP) e Cinza (Chegou - ARR).\n" +
           "• Autoatualização a cada 5 minutos.\n" +
           "• Modo tela cheia (botão Expandir/Compactar).\n" +

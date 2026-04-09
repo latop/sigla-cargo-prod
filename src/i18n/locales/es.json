@@ -101,7 +101,8 @@
     "auditLog": "Registro de Auditoría",
     "operationalKpis": "KPIs Operacionales",
     "analytics": "Analytics",
-    "locationFrequency": "Frecuencia de Localidad"
+    "locationFrequency": "Frecuencia de Localidad",
+    "driverJourney": "Jornadas de Conductores"
   },
   "locationFrequency": {
     "selectLocation": "Seleccione la localidad",
@@ -111,8 +112,14 @@
     "end": "Fin",
     "loading": "Carga",
     "unloading": "Descarga",
-    "noSlots": "No hay franjas horarias registradas para este día.",
-    "invalidTimeRange": "La hora de inicio debe ser anterior a la hora de fin."
+    "noSlots": "No hay franjas horarias registradas para esta localidad.",
+    "invalidTimeRange": "La hora de inicio debe ser anterior a la hora de fin.",
+    "daysOfWeek": "Días de la Semana",
+    "addNewSlot": "Agregar Nueva Franja",
+    "selectAtLeastOneDay": "Seleccione al menos un día de la semana.",
+    "slot": "franja",
+    "slots": "franjas",
+    "confirmDeleteSlot": "¿Eliminar franja {{start}} - {{end}} en los días: {{days}}?"
   },
   "overtimeBank": {
     "workedHours": "Horas Realizadas",

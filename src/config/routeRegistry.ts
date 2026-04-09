@@ -20,6 +20,7 @@ const lazyRoutes: Record<string, () => Promise<{ default: React.ComponentType }>
   "/daily-trips-schedule": () => import("@/pages/TripSchedulePage"),
   "/departures-and-arrivals": () => import("@/pages/ArrivalDeparturePage"),
   "/drivers-schedule": () => import("@/pages/DriverCircuitPage"),
+  "/driver-journey": () => import("@/pages/DriverJourneyPage"),
   "/scenarios": () => import("@/pages/ScenarioPage"),
   "/planning-model": () => import("@/pages/GenericPage"),
   "/strategic-planning": () => import("@/pages/StrategicPlanningPage"),

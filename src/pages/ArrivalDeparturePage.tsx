@@ -2,11 +2,14 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, MapPin, RefreshCw, Loader2, ArrowDownToLine, ArrowUpFromLine, Check, ChevronsUpDown, Maximize, Minimize } from "lucide-react";
+import { Truck, MapPin, RefreshCw, Loader2, ArrowDownToLine, ArrowUpFromLine, Check, ChevronsUpDown, Maximize, Minimize, Clock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { API_BASE } from "@/config/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useOnTimeData } from "@/hooks/use-ontime-data";
+import type { OnTimeSummary } from "@/lib/ontime-utils";
 
 // --- Types ---
 interface FlightBoardItem {
@@ -127,6 +130,26 @@ const ArrivalDeparturePage = () => {
   const [locationLabel, setLocationLabel] = useState("");
   const [locOpen, setLocOpen] = useState(false);
   const [locSearch, setLocSearch] = useState("");
+
+  const { onTimeStart, onTimeEnd } = useMemo(() => {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return {
+      onTimeStart: yesterday.toISOString().substring(0, 10),
+      onTimeEnd: tomorrow.toISOString().substring(0, 10),
+    };
+  }, []);
+
+  const { departureSummary, deliverySummary } = useOnTimeData({
+    keyPrefix: "arrival-departure",
+    startDate: onTimeStart,
+    endDate: onTimeEnd,
+    enabled: !!locationCode,
+    refetchInterval: 5 * 60 * 1000,
+  });
 
   const { data: locations = [], isLoading: locationsLoading } = useQuery<LocationOption[]>({
     queryKey: ["location-release-options"],
@@ -269,6 +292,7 @@ const ArrivalDeparturePage = () => {
             direction="ARR"
             accentColor="text-sky-500 dark:text-sky-400"
             headerBg="bg-sky-500/10 dark:bg-sky-900/30"
+            onTimeSummary={deliverySummary}
           />
           <BoardPanel
             title="PARTIDAS"
@@ -278,6 +302,7 @@ const ArrivalDeparturePage = () => {
             direction="DEP"
             accentColor="text-amber-600 dark:text-amber-400"
             headerBg="bg-amber-500/10 dark:bg-amber-900/30"
+            onTimeSummary={departureSummary}
           />
         </div>
       )}
@@ -294,9 +319,56 @@ interface BoardPanelProps {
   direction: string;
   accentColor: string;
   headerBg: string;
+  onTimeSummary?: OnTimeSummary;
 }
 
-const BoardPanel = ({ title, icon, items, loading, direction, accentColor, headerBg }: BoardPanelProps) => {
+const OnTimeBadges = ({ summary }: { summary: OnTimeSummary }) => {
+  if (summary.total === 0 && summary.cancelled === 0) return null;
+  const pct = (v: number) => summary.total > 0 ? Math.round((v / summary.total) * 100) : 0;
+  const tooltipText = `Realizadas: ${summary.total} viagens\nNo horário: ${summary.onTime} (${pct(summary.onTime)}%)\nAdiantadas: ${summary.early} (${pct(summary.early)}%)\nAtrasadas: ${summary.late} (${pct(summary.late)}%)\nCanceladas: ${summary.cancelled}`;
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="flex items-center gap-1.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 cursor-default">
+              <Clock className="h-2.5 w-2.5" /> {pct(summary.onTime)}%
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs whitespace-pre-line max-w-[200px]">
+            {tooltipText}
+          </TooltipContent>
+        </Tooltip>
+        {summary.late > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-500/15 text-orange-700 dark:text-orange-400 cursor-default">
+                +{summary.late}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {summary.late} viagem(ns) atrasada(s)
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {summary.cancelled > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive cursor-default">
+                {summary.cancelled} canc.
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {summary.cancelled} viagem(ns) cancelada(s)
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </TooltipProvider>
+  );
+};
+
+const BoardPanel = ({ title, icon, items, loading, direction, accentColor, headerBg, onTimeSummary }: BoardPanelProps) => {
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
       const da = parseCustomDate(a.timePlanned);
@@ -314,6 +386,7 @@ const BoardPanel = ({ title, icon, items, loading, direction, accentColor, heade
       <div className={cn("flex items-center gap-2 px-4 py-2 border-b border-board-border", headerBg)}>
         <span className={accentColor}>{icon}</span>
         <span className={cn("text-sm font-bold tracking-[0.2em] uppercase", accentColor)}>{title}</span>
+        {onTimeSummary && onTimeSummary.total > 0 && <OnTimeBadges summary={onTimeSummary} />}
         <span className="text-xs text-board-text-muted ml-auto font-mono">{items.length} viagens</span>
       </div>
 

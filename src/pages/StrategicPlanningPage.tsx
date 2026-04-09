@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
   Search, Loader2, X, Plus, Pencil, Trash2, Save, Copy,
-  ChevronLeft, ChevronRight, Target, MapPin, TrendingUp,
+  ChevronLeft, ChevronRight, Target, MapPin, TrendingUp, Info,
   Truck, Building2, DollarSign, BarChart3, Percent, Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -318,6 +318,11 @@ export default function StrategicPlanningPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Mock data banner */}
+      <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        Dados simulados — pendente integração
+      </div>
       {/* KPIs */}
       {hasLoaded && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">

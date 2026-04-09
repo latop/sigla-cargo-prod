@@ -7,8 +7,9 @@ import {
   Truck, Users, CalendarDays, TrendingUp, Route,
   LayoutDashboard, AlertTriangle, CheckCircle2, Timer, XCircle, Loader2, RefreshCw,
   CircleDot, Ban, Play, Clock, Filter, UserCheck, UserX, ShieldCheck, Activity,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ChevronDown, Info,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,15 @@ import { useLocalizedLogos } from "@/hooks/use-localized-logos";
 import clientLogo from "@/assets/client-logo.png";
 import { authFetch } from "@/lib/auth-fetch";
 
+
 /* ─── Types ──────────────────────────────────────── */
+
+interface OnTimeSummaryData {
+  onTime: number;
+  early: number;
+  late: number;
+  total: number;
+}
 
 interface DashboardSummary {
   tripDate: string;
@@ -52,19 +61,12 @@ interface DashboardSummary {
     statusTrip: string;
   }[];
   justificationsBySectors: { responsibleSectorCode: string; qtyJustifications: number }[];
+  locationGroups?: { code: string; description: string }[];
+  onTimeDeparture?: OnTimeSummaryData;
+  onTimeDelivery?: OnTimeSummaryData;
 }
 
 /* ─── API helpers ────────────────────────────────── */
-
-const apiFetch = async (endpoint: string, params?: Record<string, string>) => {
-  const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-  const res = await authFetch(`/${endpoint}${query}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  const pagination = res.headers.get("x-pagination");
-  const totalCount = pagination ? JSON.parse(pagination).TotalCount : null;
-  const data = await res.json();
-  return { data, totalCount };
-};
 
 const getDateISO = (offset: number) => {
   const d = new Date();
@@ -103,14 +105,6 @@ const Dashboard = () => {
   const selectedDate = new Date(tripDate + "T00:00:00");
   const isCurrentDay = dayOffset === 0;
 
-  // Location Groups (for filter buttons)
-  const { data: locationGroupsResult } = useQuery({
-    queryKey: ["dashboard-location-groups"],
-    queryFn: () => apiFetch("LocationGroup", { PageSize: "200" }),
-    staleTime: 10 * 60 * 1000,
-    retry: 1,
-  });
-
   // Single summary endpoint
   const summaryParams: Record<string, string> = { dtRef: tripDate };
   if (selectedLocationGroup) summaryParams.locationGroupCode = selectedLocationGroup;
@@ -131,21 +125,20 @@ const Dashboard = () => {
 
   const summary = summaryResult;
 
+  // OnTime data from summary
+  const departureSummary = summary?.onTimeDeparture ?? { onTime: 0, early: 0, late: 0, total: 0 };
+  const deliverySummary = summary?.onTimeDelivery ?? { onTime: 0, early: 0, late: 0, total: 0 };
+
   const handleRefresh = () => {
     if (!activated) {
       sessionDashboardLoaded = true;
       setActivated(true);
     }
     queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard-location-groups"] });
   };
 
-  const locationGroups: { code: string; description: string }[] = Array.isArray(locationGroupsResult?.data)
-    ? locationGroupsResult.data.map((g: Record<string, unknown>) => ({
-        code: String(g.code || ""),
-        description: String(g.description || g.name || g.code || ""),
-      }))
-    : [];
+  // Location groups from summary
+  const locationGroups: { code: string; description: string }[] = summary?.locationGroups ?? [];
 
   // KPIs from summary
   const totalToday = summary?.totalTrips ?? 0;
@@ -387,90 +380,11 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Main Content: Next Departures + Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Next Departures - takes 2 cols */}
-        <motion.div
-          className="lg:col-span-2"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <Card className="shadow-sm h-full">
-            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-display flex items-center gap-2">
-                <Route className="h-4 w-4 text-primary" />
-                Próximas Saídas
-              </CardTitle>
-              <Badge variant="outline" className="text-[10px]">{nextDepartures.length} pendentes</Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center h-48">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : nextDepartures.length > 0 ? (
-                <div className="overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Saída</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Tempo</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Demanda</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Trajeto</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Placa</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold">Motorista</TableHead>
-                        <TableHead className="h-7 px-3 text-[10px] font-semibold text-center">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {nextDepartures.map((dep, i) => {
-                        const sc = getStatusBadge(dep.statusTrip || "");
-                        const StatusIcon = sc.icon;
-                        return (
-                          <TableRow key={`${dep.dailyTripId}-${i}`} className="h-8 hover:bg-muted/30">
-                            <TableCell className="px-3 py-1 text-xs font-mono font-semibold whitespace-nowrap">
-                              {formatTime(dep.startPlanned)}
-                            </TableCell>
-                            <TableCell className={`px-3 py-1 text-[11px] whitespace-nowrap ${getDepartureUrgency(dep.startPlanned)}`}>
-                              {getTimeUntil(dep.startPlanned)}
-                            </TableCell>
-                            <TableCell className="px-3 py-1 text-xs whitespace-nowrap">{dep.demand || "--"}</TableCell>
-                            <TableCell className="px-3 py-1 text-xs whitespace-nowrap">
-                              <span className="font-medium">{dep.locationOrigCode || "?"}</span>
-                              <span className="text-muted-foreground mx-1">→</span>
-                              <span className="font-medium">{dep.locationDestCode || "?"}</span>
-                            </TableCell>
-                            <TableCell className="px-3 py-1 text-xs font-mono whitespace-nowrap">{dep.licensePlate || "--"}</TableCell>
-                            <TableCell className="px-3 py-1 text-xs whitespace-nowrap">{dep.nickName || "--"}</TableCell>
-                            <TableCell className="px-3 py-1 text-center">
-                              <Badge variant="outline" className={`text-[9px] gap-0.5 ${sc.cls}`}>
-                                <StatusIcon className="h-2.5 w-2.5" />
-                                {sc.label}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-                  <p className="text-sm">Nenhuma saída pendente</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
 
+      {/* Row: Status do Dia + OnTime + Justificativas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Status Donut */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <Card className="shadow-sm h-full">
             <CardHeader className="pb-1">
               <CardTitle className="text-sm font-display flex items-center gap-2">
@@ -488,29 +402,12 @@ const Dashboard = () => {
                   <div className="h-36">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={pieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={60}
-                          innerRadius={32}
-                          strokeWidth={2}
-                          stroke="hsl(var(--background))"
-                        >
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} innerRadius={32} strokeWidth={2} stroke="hsl(var(--background))">
                           {pieData.map((entry, index) => (
                             <Cell key={index} fill={entry.fill} />
                           ))}
                         </Pie>
-                        <RechartsTooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                          }}
-                        />
+                        <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px" }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -532,71 +429,77 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </motion.div>
-      </div>
 
-      {/* Bottom row: Bar Chart + Justifications by Sector */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Bar Chart - 2 cols */}
-        <motion.div className="lg:col-span-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+        {/* OnTime Saídas & Entregas */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Card className="shadow-sm h-full">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-1">
               <CardTitle className="text-sm font-display flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Viagens Programadas — Tendência
+                <Timer className="h-4 w-4 text-primary" />
+                OnTime — Saídas &amp; Entregas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center h-44">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <CardContent className="space-y-3">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Play className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-semibold text-foreground">Saídas</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{departureSummary.total} viagens</span>
                 </div>
-              ) : barData.length > 0 ? (
-                <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barData} barSize={28}>
-                      <defs>
-                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "6px",
-                          fontSize: "11px",
-                        }}
-                        formatter={(value: number) => [`${value} viagens`, "Total"]}
-                      />
-                      <Bar dataKey="viagens" fill="url(#barGradient)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { label: "OK", value: departureSummary.onTime, color: "hsl(142, 71%, 45%)" },
+                    { label: "Adiant.", value: departureSummary.early, color: "hsl(210, 80%, 55%)" },
+                    { label: "Atras.", value: departureSummary.late, color: "hsl(38, 92%, 50%)" },
+                    { label: "Canc.", value: summary?.cancelled ?? 0, color: "hsl(0, 84%, 60%)" },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center">
+                      <div className="text-sm font-bold" style={{ color: item.color }}>{item.value}</div>
+                      <div className="text-[9px] text-muted-foreground">{item.label}</div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="flex items-center justify-center h-44 text-sm text-muted-foreground">
-                  Sem dados de tendência
+                {departureSummary.total > 0 && (
+                  <div className="flex h-1.5 rounded-full overflow-hidden mt-1.5 bg-muted">
+                    {departureSummary.onTime > 0 && <div className="h-full" style={{ width: `${(departureSummary.onTime / departureSummary.total) * 100}%`, backgroundColor: "hsl(142, 71%, 45%)" }} />}
+                    {departureSummary.early > 0 && <div className="h-full" style={{ width: `${(departureSummary.early / departureSummary.total) * 100}%`, backgroundColor: "hsl(210, 80%, 55%)" }} />}
+                    {departureSummary.late > 0 && <div className="h-full" style={{ width: `${(departureSummary.late / departureSummary.total) * 100}%`, backgroundColor: "hsl(38, 92%, 50%)" }} />}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <CheckCircle2 className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-semibold text-foreground">Entregas</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{deliverySummary.total} viagens</span>
                 </div>
-              )}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { label: "OK", value: deliverySummary.onTime, color: "hsl(142, 71%, 45%)" },
+                    { label: "Adiant.", value: deliverySummary.early, color: "hsl(210, 80%, 55%)" },
+                    { label: "Atras.", value: deliverySummary.late, color: "hsl(38, 92%, 50%)" },
+                    { label: "Canc.", value: summary?.cancelled ?? 0, color: "hsl(0, 84%, 60%)" },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center">
+                      <div className="text-sm font-bold" style={{ color: item.color }}>{item.value}</div>
+                      <div className="text-[9px] text-muted-foreground">{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {deliverySummary.total > 0 && (
+                  <div className="flex h-1.5 rounded-full overflow-hidden mt-1.5 bg-muted">
+                    {deliverySummary.onTime > 0 && <div className="h-full" style={{ width: `${(deliverySummary.onTime / deliverySummary.total) * 100}%`, backgroundColor: "hsl(142, 71%, 45%)" }} />}
+                    {deliverySummary.early > 0 && <div className="h-full" style={{ width: `${(deliverySummary.early / deliverySummary.total) * 100}%`, backgroundColor: "hsl(210, 80%, 55%)" }} />}
+                    {deliverySummary.late > 0 && <div className="h-full" style={{ width: `${(deliverySummary.late / deliverySummary.total) * 100}%`, backgroundColor: "hsl(38, 92%, 50%)" }} />}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Justifications by Sector */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        {/* Justificativas por Setor */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
           <Card className="shadow-sm h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-display flex items-center gap-2">
@@ -614,10 +517,7 @@ const Dashboard = () => {
                   {delayBySector.slice(0, 6).map((sector, i) => {
                     const maxCount = delayBySector[0].count;
                     const pct = Math.round((sector.count / maxCount) * 100);
-                    const colors = [
-                      "bg-destructive", "bg-primary", "bg-primary/80",
-                      "bg-primary/60", "bg-primary/40", "bg-muted-foreground",
-                    ];
+                    const colors = ["bg-destructive", "bg-primary", "bg-primary/80", "bg-primary/60", "bg-primary/40", "bg-muted-foreground"];
                     return (
                       <div key={sector.name} className="space-y-1">
                         <div className="flex items-center justify-between">
@@ -625,12 +525,7 @@ const Dashboard = () => {
                           <span className="text-[11px] font-bold text-foreground">{sector.count}</span>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full rounded-full ${colors[i] || colors[5]}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ delay: 0.6 + i * 0.08, duration: 0.5 }}
-                          />
+                          <motion.div className={`h-full rounded-full ${colors[i] || colors[5]}`} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.6 + i * 0.08, duration: 0.5 }} />
                         </div>
                       </div>
                     );
@@ -647,6 +542,121 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
+      {/* Tendência */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-display flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Viagens Programadas — Tendência
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center h-44">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : barData.length > 0 ? (
+              <div className="h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} barSize={28}>
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px" }} formatter={(value: number) => [`${value} viagens`, "Total"]} />
+                    <Bar dataKey="viagens" fill="url(#barGradient)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-44 text-sm text-muted-foreground">
+                Sem dados de tendência
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Próximas Saídas - Collapsible */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+        <Collapsible defaultOpen>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CollapsibleTrigger className="flex items-center gap-2 hover:text-foreground transition-colors group cursor-pointer">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                <CardTitle className="text-sm font-display flex items-center gap-2">
+                  <Route className="h-4 w-4 text-primary" />
+                  Próximas Saídas
+                </CardTitle>
+              </CollapsibleTrigger>
+              <Badge variant="outline" className="text-[10px]">{nextDepartures.length} pendentes</Badge>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="flex items-center justify-center h-48">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : nextDepartures.length > 0 ? (
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30">
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Saída</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Tempo</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Demanda</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Trajeto</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Placa</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold">Motorista</TableHead>
+                          <TableHead className="h-7 px-3 text-[10px] font-semibold text-center">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {nextDepartures.map((dep, i) => {
+                          const sc = getStatusBadge(dep.statusTrip || "");
+                          const StatusIcon = sc.icon;
+                          return (
+                            <TableRow key={`${dep.dailyTripId}-${i}`} className="h-8 hover:bg-muted/30">
+                              <TableCell className="px-3 py-1 text-xs font-mono font-semibold whitespace-nowrap">{formatTime(dep.startPlanned)}</TableCell>
+                              <TableCell className={`px-3 py-1 text-[11px] whitespace-nowrap ${getDepartureUrgency(dep.startPlanned)}`}>{getTimeUntil(dep.startPlanned)}</TableCell>
+                              <TableCell className="px-3 py-1 text-xs whitespace-nowrap">{dep.demand || "--"}</TableCell>
+                              <TableCell className="px-3 py-1 text-xs whitespace-nowrap">
+                                <span className="font-medium">{dep.locationOrigCode || "?"}</span>
+                                <span className="text-muted-foreground mx-1">→</span>
+                                <span className="font-medium">{dep.locationDestCode || "?"}</span>
+                              </TableCell>
+                              <TableCell className="px-3 py-1 text-xs font-mono whitespace-nowrap">{dep.licensePlate || "--"}</TableCell>
+                              <TableCell className="px-3 py-1 text-xs whitespace-nowrap">{dep.nickName || "--"}</TableCell>
+                              <TableCell className="px-3 py-1 text-center">
+                                <Badge variant="outline" className={`text-[9px] gap-0.5 ${sc.cls}`}>
+                                  <StatusIcon className="h-2.5 w-2.5" />
+                                  {sc.label}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                    <p className="text-sm">Nenhuma saída pendente</p>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      </motion.div>
+
       {/* ═══ Driver Circuits & Journeys Section ═══ */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
         <div className="flex items-center gap-2 mt-2 mb-3">
@@ -656,10 +666,15 @@ const Dashboard = () => {
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
+        {/* Mock data banner */}
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground mb-3">
+          <Info className="h-4 w-4 shrink-0" />
+          Dados simulados — pendente integração
+        </div>
       </motion.div>
 
       {/* Driver KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="opacity-60 grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { icon: UserCheck, label: "Motoristas Escalados", value: driverCircuitKpis.scheduled, color: "text-emerald-500", bgColor: "bg-emerald-500/10", borderClass: "border-l-emerald-500" },
           { icon: UserX, label: "Motoristas Ociosos", value: driverCircuitKpis.idle, color: "text-amber-500", bgColor: "bg-amber-500/10", borderClass: "border-l-amber-500" },
@@ -683,7 +698,7 @@ const Dashboard = () => {
       </div>
 
       {/* Occupancy Bar + Compliance Donut */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
+      <div className="opacity-60 grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
         <motion.div className="lg:col-span-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
           <Card className="shadow-sm h-full">
             <CardHeader className="pb-2">
@@ -758,7 +773,7 @@ const Dashboard = () => {
       </div>
 
       {/* Hours Ranking + Circuit Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
+      <div className="opacity-60 grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
         <motion.div className="lg:col-span-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
           <Card className="shadow-sm h-full">
             <CardHeader className="pb-2">

@@ -101,7 +101,8 @@
     "auditLog": "Log de Auditoria",
     "operationalKpis": "KPIs Operacionais",
     "analytics": "Analytics",
-    "locationFrequency": "Frequência de Localidade"
+    "locationFrequency": "Frequência de Localidade",
+    "driverJourney": "Jornadas de Motoristas"
   },
   "locationFrequency": {
     "selectLocation": "Selecione a localidade",
@@ -111,8 +112,14 @@
     "end": "Fim",
     "loading": "Carga",
     "unloading": "Descarga",
-    "noSlots": "Nenhuma faixa horária cadastrada para este dia.",
-    "invalidTimeRange": "O horário de início deve ser anterior ao horário de fim."
+    "noSlots": "Nenhuma faixa horária cadastrada para esta localidade.",
+    "invalidTimeRange": "O horário de início deve ser anterior ao horário de fim.",
+    "daysOfWeek": "Dias da Semana",
+    "addNewSlot": "Adicionar Nova Faixa",
+    "selectAtLeastOneDay": "Selecione ao menos um dia da semana.",
+    "slot": "faixa",
+    "slots": "faixas",
+    "confirmDeleteSlot": "Excluir faixa {{start}} - {{end}} nos dias: {{days}}?"
   },
   "overtimeBank": {
     "workedHours": "Horas Realizadas",

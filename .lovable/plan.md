@@ -1,59 +1,24 @@
 
 
-## Refatorar Dashboard para usar `/dashboard/GetDashboardSummary`
+# Fix: Gantt da Coordenação não preenche espaço vertical
 
-Substituir as múltiplas chamadas de API (Gantt, Drivers count, Trucks count) por um único endpoint dedicado que retorna todos os dados agregados.
+## Problema
 
----
+Na aba Gantt da Coordenação, o conteúdo não ocupa toda a altura disponível, deixando um grande espaço em branco abaixo do footer de paginação. A aba Listagem funciona corretamente.
 
-### O que muda
+## Causa raiz
 
-O Dashboard atual faz 4+ chamadas separadas (Gantt do dia, Gantt da semana, Drivers count, Trucks count) e calcula KPIs no frontend. O novo endpoint `/dashboard/GetDashboardSummary` já retorna tudo pronto.
+O `TabsContent` do Gantt tem `flex-1 min-h-0` mas falta a propriedade CSS necessária para que o Radix TabsContent participe corretamente do layout flex. O componente `TabsContent` do Radix não tem `display: flex` nem `flex-direction: column` por padrão, então o `flex-1` funciona para dar altura, mas o filho `<div className="h-full">` não consegue herdar a altura corretamente.
 
-### Mapeamento do DTO para o Dashboard
+## Correção
 
-| Campo do DTO | Uso no Dashboard |
-|---|---|
-| `totalTrips` | KPI "Viagens Hoje" |
-| `inProgress` | KPI "Em Execução" |
-| `completed` | Donut status |
-| `planned` | Donut status |
-| `cancelled` | Donut status |
-| `delayed` | KPI "Atrasadas" + Donut |
-| `uniqueDrivers` | KPI "Motoristas Escalados" |
-| `uniqueVehicles` | KPI "Veículos em Operação" |
-| `onTimeRate` | Barra "Pontualidade" |
-| `completionRate` | Barra "Conclusão" |
-| `cancelRate` | Barra "Cancelamentos" |
-| `tripCounts[]` | Gráfico de barras 7 dias (dtRef + qtyTrips) |
-| `nextDepartures[]` | Tabela "Próximas Saídas" |
-| `justificationsBySectors[]` | Gráfico "Justificativas por Setor" |
+**Arquivo: `src/pages/TripSchedulePage.tsx`**
 
-### Alterações técnicas
+- Na `TabsContent value="gantt"`, adicionar `flex flex-col` para que o layout flex se propague ao filho:
+  - De: `className="mt-0 flex-1 min-h-0"`
+  - Para: `className="mt-0 flex-1 min-h-0 flex flex-col"`
 
-**`src/pages/Dashboard.tsx`**:
+- No `<div>` interno que envolve o `TripGanttChart`, mudar de `h-full overflow-hidden` para `flex-1 min-h-0 overflow-hidden` para garantir que ele ocupe todo o espaço flex disponível.
 
-1. **Remover queries**: Eliminar `dashboard-gantt`, `dashboard-gantt-week`, `dashboard-drivers`, `dashboard-trucks`.
-
-2. **Nova query única**: `dashboard-summary` chamando `GET /dashboard/GetDashboardSummary?tripDate={YYYY-MM-DD}&locationGroupCode={code}`. O `locationGroupCode` é enviado apenas quando selecionado (não "Todas").
-
-3. **KPIs diretos**: Usar `summary.totalTrips`, `summary.inProgress`, `summary.uniqueDrivers`, `summary.uniqueVehicles`, `summary.delayed` diretamente — sem cálculos no frontend.
-
-4. **Taxas diretas**: `summary.onTimeRate`, `summary.completionRate`, `summary.cancelRate` já vêm prontos.
-
-5. **Donut "Status do Dia"**: Montar pieData a partir de `summary.planned`, `summary.inProgress`, `summary.completed`, `summary.delayed`, `summary.cancelled`.
-
-6. **Gráfico de barras**: Mapear `summary.tripCounts` (array de `{dtRef, qtyTrips}`) diretamente para o barData, formatando dtRef como "Seg 20".
-
-7. **Tabela "Próximas Saídas"**: Usar `summary.nextDepartures` diretamente. Campos: `startPlanned`, `demand`, `locationOrigCode`, `locationDestCode`, `licensePlate`, `nickName`, `statusTrip`.
-
-8. **Justificativas por Setor**: Usar `summary.justificationsBySectors` (array de `{responsibleSectorCode, qtyJustifications}`).
-
-9. **Navegação de dias**: Mantém o `dayOffset` existente, passando a data calculada como `tripDate`.
-
-10. **Filtro LocationGroup**: Mantém os botões existentes, passando `locationGroupCode` quando selecionado. Query de LocationGroups permanece separada (para montar os botões de filtro).
-
-11. **Seção "Circuitos & Jornadas"**: Permanece com dados mock (sem endpoint correspondente no DTO).
-
-12. **Refresh/refetch**: `handleRefresh` invalida apenas `dashboard-summary` + `dashboard-location-groups`.
+Isso é uma correção de 2 linhas que faz o Gantt preencher toda a altura disponível, igual à Listagem.
 
