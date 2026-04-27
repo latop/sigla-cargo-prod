@@ -15,6 +15,33 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.20.0",
+    date: "2026-04-27",
+    type: "feature",
+    changes: [
+      {
+        pt: "Coordenação de Viagens: contadores corrigidos — distinção clara entre 'viagens nesta página' e 'veículos no total' na paginação",
+        en: "Trip Coordination: counters corrected — clear distinction between 'trips on this page' and 'vehicles in total' in pagination",
+        es: "Coordinación de Viajes: contadores corregidos — distinción clara entre 'viajes en esta página' y 'vehículos en total' en la paginación",
+      },
+      {
+        pt: "Relatórios: suporte ao header padronizado 'x-report-rowcount' com fallback para body.summary.total — exibição 'X nesta página · Y no total'",
+        en: "Reports: support for standardized 'x-report-rowcount' header with fallback to body.summary.total — displays 'X on this page · Y in total'",
+        es: "Informes: soporte para header estandarizado 'x-report-rowcount' con fallback a body.summary.total — muestra 'X en esta página · Y en total'",
+      },
+      {
+        pt: "Importação de Demandas: novo dropdown 'Tipo de Importação' (Rota - Por entrega/reverso, Rota - Por saída/forward, Janela comercial) após o Grupo de Localidade. Default: Por entrega",
+        en: "Demand Import: new 'Import Type' dropdown (Route - By delivery/reverse, Route - By departure/forward, Commercial window) after Location Group. Default: By delivery",
+        es: "Importación de Demandas: nuevo dropdown 'Tipo de Importación' (Ruta - Por entrega/reverso, Ruta - Por salida/forward, Ventana comercial) después del Grupo de Localidad. Default: Por entrega",
+      },
+      {
+        pt: "Pacote técnico de relatórios entregue ao backend: enum canônico TripOperationalStatus (8 estados), contratos OpenAPI, catálogo de 18 relatórios em 4 ondas",
+        en: "Reports technical package delivered to backend: canonical TripOperationalStatus enum (8 states), OpenAPI contracts, catalog of 18 reports across 4 waves",
+        es: "Paquete técnico de informes entregado al backend: enum canónico TripOperationalStatus (8 estados), contratos OpenAPI, catálogo de 18 informes en 4 olas",
+      },
+    ],
+  },
+  {
     version: "1.19.0",
     date: "2026-04-09",
     type: "improvement",

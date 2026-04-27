@@ -92,6 +92,7 @@ const ImportMapPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadLocationCode, setUploadLocationCode] = useState("");
+  const [uploadImportType, setUploadImportType] = useState<"reverse" | "forward" | "commercial">("reverse");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -168,6 +169,10 @@ const ImportMapPage = () => {
     requiredFields: { pt: "Preencha todos os campos obrigatórios.", en: "Fill in all required fields.", es: "Complete todos los campos obligatorios." },
     locationCodeLabel: { pt: "Grupo de Localidade", en: "Location Group", es: "Grupo de Localidad" },
     locationCodePlaceholder: { pt: "Selecione o grupo", en: "Select group", es: "Seleccione grupo" },
+    importTypeLabel: { pt: "Tipo de Importação", en: "Import Type", es: "Tipo de Importación" },
+    importTypeReverse: { pt: "Rota - Por entrega (reverso)", en: "Route - By delivery (reverse)", es: "Ruta - Por entrega (reverso)" },
+    importTypeForward: { pt: "Rota - Por saída (forward)", en: "Route - By departure (forward)", es: "Ruta - Por salida (forward)" },
+    importTypeCommercial: { pt: "Janela comercial", en: "Commercial window", es: "Ventana comercial" },
     checkHasErrors: { pt: "A validação encontrou inconsistências:", en: "Validation found inconsistencies:", es: "La validación encontró inconsistencias:" },
     rowsPerPage: { pt: "Linhas por página", en: "Rows per page", es: "Filas por página" },
     of: { pt: "de", en: "of", es: "de" },
@@ -270,6 +275,7 @@ const ImportMapPage = () => {
       const formData = new FormData();
       formData.append("File", selectedFile);
       formData.append("Locationcode", uploadLocationCode.trim());
+      formData.append("ImportType", uploadImportType);
 
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -637,6 +643,27 @@ const ImportMapPage = () => {
                       {lg.code} – {lg.description}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Import Type */}
+            <div className="w-[240px]">
+              <Label className="text-xs font-medium">
+                {l("importTypeLabel")} <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={uploadImportType}
+                onValueChange={(v) => setUploadImportType(v as "reverse" | "forward" | "commercial")}
+                disabled={uploading}
+              >
+                <SelectTrigger className="h-9 mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reverse">{l("importTypeReverse")}</SelectItem>
+                  <SelectItem value="forward">{l("importTypeForward")}</SelectItem>
+                  <SelectItem value="commercial">{l("importTypeCommercial")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

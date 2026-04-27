@@ -236,9 +236,15 @@ export function LookupSearchField({
         return;
       }
       setLoading(true);
-      const searches = [fetchSearch(endpoint, searchFilterParam, query, 10, 1, extraParams)];
+      // For Drivers autocomplete, restrict to active drivers by default
+      // (avoid returning desligados in the dropdown when typing the name).
+      const autocompleteParams: Record<string, string> = { ...(extraParams || {}) };
+      if (endpoint === "Drivers" && autocompleteParams.IsActive === undefined) {
+        autocompleteParams.IsActive = "1";
+      }
+      const searches = [fetchSearch(endpoint, searchFilterParam, query, 10, 1, autocompleteParams)];
       if (alternateSearchFilterParam) {
-        searches.push(fetchSearch(endpoint, alternateSearchFilterParam, query, 10, 1, extraParams));
+        searches.push(fetchSearch(endpoint, alternateSearchFilterParam, query, 10, 1, autocompleteParams));
       }
       Promise.all(searches)
         .then((results) => {
@@ -251,7 +257,11 @@ export function LookupSearchField({
             seen.add(id);
             return true;
           });
-          const transformed = unique.map(normalizeLookupItem);
+          let transformed = unique.map(normalizeLookupItem);
+          // Client-side safety: even if backend ignores IsActive, drop inactive drivers
+          if (endpoint === "Drivers" && autocompleteParams.IsActive === "1") {
+            transformed = transformed.filter((item) => isDriverActive(item));
+          }
           transformed.sort((a, b) => getLookupLabel(a, labelFn).toLowerCase().localeCompare(getLookupLabel(b, labelFn).toLowerCase()));
           setSuggestions(transformed);
           setShowSuggestions(true);
@@ -259,7 +269,7 @@ export function LookupSearchField({
         .catch(() => setSuggestions([]))
         .finally(() => setLoading(false));
     },
-    [endpoint, searchFilterParam, alternateSearchFilterParam, extraParams, normalizeLookupItem, labelFn],
+    [endpoint, searchFilterParam, alternateSearchFilterParam, extraParams, normalizeLookupItem, isDriverActive, labelFn],
   );
 
   const handleInputChange = (text: string) => {

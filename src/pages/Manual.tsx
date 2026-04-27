@@ -53,6 +53,10 @@ interface ScreenDoc {
   creation?: string;
   edition?: string;
   deletion?: string;
+  /** Passo a passo operacional (numerado) */
+  stepByStep?: string;
+  /** Erros comuns e dicas de solução */
+  commonErrors?: string;
   /** Auto-generated from schema */
   schemaKey?: string;
   extra?: string;
@@ -214,6 +218,20 @@ const manualData: ManualGroup[] = [
           "Botão '+' para criar nova viagem com formulário completo.",
         edition:
           "Duplo clique na barra do Gantt ou na linha da tabela abre o painel lateral de edição.",
+        stepByStep:
+          "1. Defina a Data Início e a Data Fim (período máximo de 7 dias).\n" +
+          "2. (Opcional) Refine por Grupo de Frota, Grupo de Localidade, Placas ou Demanda.\n" +
+          "3. Clique em 'Pesquisar' — a tela não carrega dados automaticamente.\n" +
+          "4. Alterne entre as visões 'Gantt' e 'Lista' no canto superior direito.\n" +
+          "5. No Gantt, use os botões de zoom (6h / 12h / 24h) e arraste horizontalmente para navegar.\n" +
+          "6. Dê duplo clique numa barra (ou linha da tabela) para abrir o painel de edição.\n" +
+          "7. Para criar uma nova viagem, clique em '+' e preencha os dados no diálogo.\n" +
+          "8. Use 'Exportar' para gerar Excel (.xlsx) ou PDF do resultado pesquisado.",
+        commonErrors:
+          "• 'Período máximo excedido' — reduza o intervalo entre Data Início e Data Fim para até 7 dias.\n" +
+          "• Tela vazia após pesquisar — verifique se as placas selecionadas têm viagens no período; remova filtros opcionais para ampliar o resultado.\n" +
+          "• Barras desalinhadas no Gantt — alterne o zoom (24h é o mais estável para períodos longos).\n" +
+          "• Duplo clique não abre o painel — confirme que clicou na barra colorida (não no espaço vazio da linha).",
         extra:
           "• Suporte a zoom no Gantt (6h, 12h, 24h).\n" +
           "• Ordenação inteligente no Gantt: veículos com viagem no período aparecem primeiro (ordenados por placa), seguidos pelos veículos sem viagem (também ordenados por placa).\n" +
@@ -252,6 +270,20 @@ const manualData: ManualGroup[] = [
           "Data da Viagem (obrigatório) e Local de Saída (obrigatório, com busca por nome). Os filtros devem ser preenchidos antes da pesquisa.",
         listing:
           "Exibe as viagens com colunas: Demanda, Placa, Motorista, Origem, Destino, Horários (Planejado/Real) e Status (badges coloridos).",
+        stepByStep:
+          "1. Selecione a Data da Viagem (obrigatória).\n" +
+          "2. Selecione o Local de Saída (obrigatório, com busca por nome).\n" +
+          "3. Clique em 'Pesquisar' — a tela não carrega dados automaticamente.\n" +
+          "4. Identifique a viagem desejada na listagem.\n" +
+          "5. Clique no botão 'Check' (azul pulsante) para abrir o Checklist. Use o ícone de cópia para transferir os dados planejados para os campos de execução, ajuste se necessário e salve.\n" +
+          "6. Após o checklist concluído (botão fica verde), clique em 'Liberar' para abrir o formulário de liberação do motorista e veículo.\n" +
+          "7. Confirme os dados de motorista (apenas ativos) e do veículo, e salve a liberação.\n" +
+          "8. O botão passa a 'Liberado' (tom neutro) sinalizando a conclusão.",
+        commonErrors:
+          "• 'Selecione um local de saída' — o filtro Local de Saída é obrigatório antes de pesquisar.\n" +
+          "• Botão 'Liberar' desabilitado — execute primeiro o Checklist; só depois a liberação fica disponível.\n" +
+          "• Motorista não aparece no dropdown — apenas motoristas Ativos são listados (modo 'forceActiveOnly'). Verifique o status na tela de Motoristas.\n" +
+          "• Campos planejados em fundo azul claro são somente leitura — para alterar, use a tela de Coordenação de Viagens.",
         extra:
           "Fluxo de Liberação em duas etapas:\n\n" +
           "1. Checklist — Botão 'Check' (azul pulsante quando pendente, verde quando concluído). Abre formulário com dados planejados " +
@@ -273,6 +305,17 @@ const manualData: ManualGroup[] = [
         objective: "Registrar e gerenciar solicitações de motoristas para atividades específicas.",
         filters: "Data Inicial (obrigatório), Data Final (obrigatório), Grupo de Localidade, Grupo de Frota, Motorista (pesquisa avançada), Atividade e Status. Período padrão: D-0 até D+30, máximo de 60 dias. O filtro de Status inicia em 'Pendente' por padrão.",
         listing: "Exibe Data Solicitada, Motorista (com tooltip de Base e Frotas), Atividade, Programação (horário início-fim), Observação, Data do Pedido e Status com badges coloridos (amarelo=Pendente, verde=Aprovado, vermelho=Negado). Colunas ordenáveis por clique no cabeçalho.",
+        stepByStep:
+          "1. Defina o período (Data Inicial e Final). Padrão D-0 a D+30, máximo de 60 dias.\n" +
+          "2. (Opcional) Refine por Grupo de Localidade, Grupo de Frota, Motorista ou Atividade.\n" +
+          "3. O filtro de Status inicia em 'Pendente' — altere se quiser ver Aprovados/Negados.\n" +
+          "4. Clique em 'Pesquisar' para listar.\n" +
+          "5. Para aprovar/negar uma solicitação Pendente, use os botões na coluna Ações; confirme no diálogo.\n" +
+          "6. Use 'Exportar' para gerar Excel ou PDF (com a descrição dos filtros aplicados).",
+        commonErrors:
+          "• 'Período máximo excedido' — reduza o intervalo para até 60 dias.\n" +
+          "• Solicitação não exibe botões de Ação — apenas registros com status 'Pendente' permitem aprovar/negar.\n" +
+          "• Tela vazia — confirme se o filtro Status está em 'Pendente' (padrão); altere para 'Todos' para ver o histórico completo.",
         extra:
           "• Ações de Aprovação/Negação — Botões sempre visíveis na coluna Ações para solicitações com status Pendente.\n" +
           "• Confirmação via diálogo — Ao aprovar ou negar, uma caixa de confirmação é exibida antes de efetivar a ação.\n" +
@@ -284,6 +327,19 @@ const manualData: ManualGroup[] = [
         route: "/drivers-schedule",
         objective: "Gestão de circuitos de motoristas com Gráfico de Gantt interativo e painel de edição de circuitos.",
         filters: "Data Início, Data Fim, Grupo de Localidade, Motorista (pesquisa avançada com 'forceActiveOnly').",
+        stepByStep:
+          "1. Defina Data Início, Data Fim e (opcional) Grupo de Localidade ou Motorista.\n" +
+          "2. Clique em 'Pesquisar'. O Gantt monta uma linha por motorista no período.\n" +
+          "3. Dê duplo clique numa barra para abrir o painel de edição (1300px x 50vh) com cabeçalho e tabela de tarefas.\n" +
+          "4. Para incluir uma viagem: clique em 'Adicionar Viagem', informe o número da DT (busca automática) e confirme.\n" +
+          "5. Para incluir uma atividade: clique em 'Adicionar Atividade' e use a pesquisa avançada por tipo.\n" +
+          "6. Para ver viagens sem motorista, abra o painel flutuante 'Viagens Sem Motorista' (900px x 85vh) — filtre, ordene e atribua.\n" +
+          "7. Salve as alterações no painel para persistir o circuito.",
+        commonErrors:
+          "• Motorista não aparece — somente motoristas Ativos são listados (modo 'forceActiveOnly').\n" +
+          "• Viagem não localizada ao adicionar — confirme o número da DT; viagens já vinculadas a outro motorista não retornam na busca.\n" +
+          "• Painel de edição não abre — clique sobre a barra colorida do Gantt (não na faixa em branco da linha).\n" +
+          "• Conflito de horário ao adicionar tarefa — verifique se já existe outra atividade/viagem no mesmo intervalo do motorista.",
         extra:
           "• Gráfico de Gantt com visualização de circuitos por motorista e período.\n" +
           "• Painel de edição flutuante com cabeçalho (Código, Status, datas planejadas e reais) e tabela de tarefas (viagens e atividades).\n" +
@@ -301,6 +357,16 @@ const manualData: ManualGroup[] = [
         creation: "Formulário com Motorista (pesquisa avançada com 'forceActiveOnly'), Data Início e Data Fim.",
         edition: "Clique no registro abre o painel de edição.",
         deletion: "Ícone de lixeira com confirmação.",
+        stepByStep:
+          "1. Informe a Data de Referência (obrigatória) e, se desejar, a Base do motorista.\n" +
+          "2. Clique em 'Pesquisar' para listar férias vigentes/previstas/encerradas no período.\n" +
+          "3. Para incluir, clique em '+', selecione o motorista (apenas Ativos) e defina o período (Data Início <= Data Fim).\n" +
+          "4. Para alterar, clique no registro e ajuste no painel de edição.\n" +
+          "5. Para excluir, use o ícone de lixeira e confirme.",
+        commonErrors:
+          "• 'Data Fim anterior à Data Início' — corrija para que Data Fim seja maior ou igual à Data Início.\n" +
+          "• Motorista não listado — apenas motoristas Ativos são selecionáveis.\n" +
+          "• Sobreposição de férias — o sistema bloqueia períodos que se sobrepõem para o mesmo motorista.",
       },
       {
         name: "Treinamento de Motoristas",
@@ -332,6 +398,19 @@ const manualData: ManualGroup[] = [
         creation: "Formulário com Nome, Descrição, Toggle de Obrigatoriedade, Data de Emissão, Data de Validade e Upload de arquivo (drag-and-drop, aceita PDF, DOC, XLS).",
         edition: "Clique no ícone de edição abre o painel com os campos preenchidos.",
         deletion: "Ícone de lixeira com confirmação obrigatória.",
+        stepByStep:
+          "1. Cadastre o documento clicando em '+': informe Nome, Descrição, marque se é Obrigatório, defina Data de Emissão e Validade e arraste o arquivo (PDF/DOC/XLS).\n" +
+          "2. Salve — o documento entra como 'Rascunho'.\n" +
+          "3. Clique em 'Enviar' no card do documento. Escolha 'Todos os motoristas' ou filtre por Base.\n" +
+          "4. Após o envio, o status muda para 'Ativo' e os destinatários aparecem na visualização.\n" +
+          "5. Clique em 'Visualizar' para acompanhar a barra de progresso de leitura e a tabela de destinatários (Motorista, CPF, Base, Data de Envio, Data de Leitura, Status).\n" +
+          "6. Use o filtro de destinatários (Todos / Lidos / Enviados / Pendentes) para acompanhar a aderência.\n" +
+          "7. Para atualizar o documento, clique no ícone de edição. Para retirá-lo, use a lixeira (com confirmação).",
+        commonErrors:
+          "• Upload falha — verifique o formato (PDF, DOC ou XLS) e tente novamente; arquivos muito grandes podem ser rejeitados pelo backend.\n" +
+          "• Documento não pode ser enviado — confirme se Data de Emissão e Validade estão preenchidas e se a Validade é futura.\n" +
+          "• Status 'A Vencer' inesperado — o sistema marca documentos com vencimento nos próximos 30 dias.\n" +
+          "• Taxa de leitura não atualiza — a leitura é registrada quando o motorista abre o documento no app; usuários não respondem por essa estatística.",
         extra:
           "KPIs no topo da tela:\n\n" +
           "• Total de Documentos — Quantidade total de documentos cadastrados.\n" +
@@ -724,6 +803,8 @@ function screenToTextBlocks(screen: ScreenDoc): { label: string; text: string }[
   if (screen.creation) blocks.push({ label: "Inclusão (Novo Registro)", text: screen.creation });
   if (screen.edition) blocks.push({ label: "Edição", text: screen.edition });
   if (screen.deletion) blocks.push({ label: "Exclusão", text: screen.deletion });
+  if (screen.stepByStep) blocks.push({ label: "Passo a Passo", text: screen.stepByStep });
+  if (screen.commonErrors) blocks.push({ label: "Erros Comuns e Dicas", text: screen.commonErrors });
   if (screen.extra) blocks.push({ label: "Observações", text: screen.extra });
   return blocks;
 }
@@ -871,7 +952,7 @@ function ScreenCard({ screen }: { screen: ScreenDoc }) {
   const [open, setOpen] = useState(false);
 
   const hasSections =
-    screen.filters || screen.listing || screen.creation || screen.edition || screen.deletion || screen.extra;
+    screen.filters || screen.listing || screen.creation || screen.edition || screen.deletion || screen.stepByStep || screen.commonErrors || screen.extra;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -931,6 +1012,20 @@ function ScreenCard({ screen }: { screen: ScreenDoc }) {
               <>
                 <SectionLabel label="Exclusão" />
                 <TextBlock text={screen.deletion} />
+              </>
+            )}
+
+            {screen.stepByStep && (
+              <>
+                <SectionLabel label="Passo a Passo" />
+                <TextBlock text={screen.stepByStep} />
+              </>
+            )}
+
+            {screen.commonErrors && (
+              <>
+                <SectionLabel label="Erros Comuns e Dicas" />
+                <TextBlock text={screen.commonErrors} />
               </>
             )}
 

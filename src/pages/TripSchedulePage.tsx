@@ -452,7 +452,7 @@ export default function TripSchedulePage() {
                   <TabsTrigger value="list" className="text-xs h-7 px-3">Listagem</TabsTrigger>
                   <TabsTrigger value="gantt" className="text-xs h-7 px-3">Gantt</TabsTrigger>
                 </TabsList>
-                <span className="text-xs text-muted-foreground">{trips.length} viagens carregadas</span>
+                <span className="text-xs text-muted-foreground">{trips.length} viagens nesta página</span>
               </div>
 
               <TabsContent
@@ -468,7 +468,7 @@ export default function TripSchedulePage() {
                     footer={
                       <div className="flex items-center justify-between px-3 py-2 border-t border-border shrink-0">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{totalCount} registros</span>
+                          <span>{totalCount} veículos</span>
                           <span className="text-border">|</span>
                           <span>Por página:</span>
                           <Select value={String(pageSize)} onValueChange={(v) => { const ns = Number(v); setPageSize(ns); fetchPage(1, ns); }}>
@@ -541,7 +541,7 @@ export default function TripSchedulePage() {
                 {/* List Pagination */}
                 <div className="flex items-center justify-between px-3 py-2 border-t border-border shrink-0">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{totalCount} registros</span>
+                    <span>{totalCount} veículos</span>
                     <span className="text-border">|</span>
                     <span>Por página:</span>
                     <Select value={String(pageSize)} onValueChange={(v) => { const ns = Number(v); setPageSize(ns); fetchPage(1, ns); }}>

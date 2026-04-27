@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Globe, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TabBar } from "@/components/TabBar";
+import { FunctionSearch } from "@/components/FunctionSearch";
 import { TabsProvider, useTabs } from "@/contexts/TabsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRouteComponent } from "@/config/routeRegistry";
@@ -75,6 +76,7 @@ function AppLayoutInner() {
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <FunctionSearch />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 text-xs">

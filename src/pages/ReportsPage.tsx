@@ -33,6 +33,16 @@ interface ReportDef {
 interface ReportDataResponse {
   field: string[];
   values: (string | number | null)[][];
+  /** Total real de registros (de `x-report-rowcount` ou body.summary.total). Quando ausente, cai para values.length. */
+  totalRowCount?: number;
+  /** Resumo agregado opcional (server-side), ex.: contagem por status. */
+  summary?: {
+    total?: number;
+    byStatus?: Record<string, number>;
+    [k: string]: unknown;
+  };
+  /** Timestamp de geração (header `x-report-generated-at`). */
+  generatedAt?: string;
 }
 
 const FILE_TYPE_OPTIONS = [
@@ -53,8 +63,24 @@ const generateReport = async (reportCode: string, parameters: string[], fileType
     body: JSON.stringify({ reportCode, parameter: parameters, fileType }),
   });
   if (!res.ok) throw new Error(`Erro ao gerar relatório: ${res.status}`);
-  if (fileType === "data") return res.json();
-  return res.blob();
+  if (fileType !== "data") return res.blob();
+
+  const json = await res.json();
+  // Padrão: header `x-report-rowcount` é a fonte de verdade do total real.
+  // Fallback: body.summary.total → body.totalRowCount → values.length (compat).
+  const headerCount = res.headers.get("x-report-rowcount");
+  const parsedHeader = headerCount ? parseInt(headerCount, 10) : NaN;
+  const totalRowCount =
+    Number.isFinite(parsedHeader) ? parsedHeader :
+    typeof json?.summary?.total === "number" ? json.summary.total :
+    typeof json?.totalRowCount === "number" ? json.totalRowCount :
+    Array.isArray(json?.values) ? json.values.length : 0;
+
+  return {
+    ...json,
+    totalRowCount,
+    generatedAt: res.headers.get("x-report-generated-at") ?? undefined,
+  } as ReportDataResponse;
 };
 
 const ReportsPage = () => {
@@ -179,7 +205,12 @@ const ReportsPage = () => {
             Voltar
           </Button>
           <span className="text-sm font-semibold">{selectedReport.description}</span>
-          <span className="text-xs text-muted-foreground">({viewData.values.length} registros)</span>
+          <span className="text-xs text-muted-foreground">
+            {viewData.values.length} nesta página
+            {typeof viewData.totalRowCount === "number" && viewData.totalRowCount !== viewData.values.length && (
+              <> · <span className="font-semibold text-foreground">{viewData.totalRowCount}</span> no total</>
+            )}
+          </span>
           <Button
             variant="outline"
             size="sm"

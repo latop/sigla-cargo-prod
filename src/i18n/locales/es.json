@@ -15,7 +15,7 @@
     "overview": "Visión General",
     "recentActivity": "Actividad Reciente",
     "activeTrips": "Viajes Activos",
-    "locations": "Localidades",
+    "locations": "Ubicaciones",
     "pendingSchedules": "Escalas Pendientes",
     "fleetStatus": "Estado de la Flota"
   },
@@ -122,7 +122,7 @@
     "confirmDeleteSlot": "¿Eliminar franja {{start}} - {{end}} en los días: {{days}}?"
   },
   "overtimeBank": {
-    "workedHours": "Horas Realizadas",
+    "workedHours": "Horas Trabajadas",
     "allowedHours": "Horas Permitidas",
     "overtimeHours": "Horas Extras",
     "compensated": "Compensadas",
@@ -192,9 +192,8 @@
     "newTitle": "Nueva Vacación",
     "editTitle": "Editar Vacación",
     "statusActive": "EN CURSO",
-    "statusFuture": "PREVISTA",
+    "statusFuture": "PLANIFICADA",
     "statusEnded": "FINALIZADA",
-    
     "startAfterEnd": "La fecha de inicio no puede ser posterior a la fecha de fin.",
     "referenceDate": "Fecha de Referencia",
     "driverBase": "Base del Conductor",
@@ -394,7 +393,7 @@
     "fri": "Vie",
     "sat": "Sáb",
     "sun": "Dom",
-    "licensePlate": "Placa",
+    "licensePlate": "Patente",
     "fleetCode": "Cód. Flota",
     "generate": "Generar Plan. de Vehículos",
     "generateSuccess": "¡Planificación de vehículos generada con éxito!",
