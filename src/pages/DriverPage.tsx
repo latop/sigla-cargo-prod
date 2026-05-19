@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -299,22 +299,114 @@ const fetchDrivers = async (filters: DriverFilters, pageNumber: number, pageSize
   return { items, pagination };
 };
 
+const emptyToNull = <T,>(value: T): T | null => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  return value;
+};
+
+// --- Masks ---
+const maskCPF = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+};
+const maskPhoneBR = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) {
+    return d
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d{1,4})$/, "$1-$2");
+  }
+  return d
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
+};
+const maskCEP = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/^(\d{5})(\d)/, "$1-$2");
+};
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const isValidPhoneBR = (v: string) => {
+  const d = v.replace(/\D/g, "");
+  return d.length === 10 || d.length === 11;
+};
+const stripDigits = (v?: string | null) => (v ?? "").replace(/\D/g, "");
+
+
+const OPTIONAL_DRIVER_FIELDS = [
+  "registration", "seniority", "identification", "resign",
+  "address", "zipCode", "district", "cityId", "stateId",
+  "email", "phone1", "phone2", "note",
+  "integrationCode", "integrationCodeGPS", "urlPhoto", "password",
+] as const;
+
+const normalizeDriverPayload = (driver: Partial<DriverItem>): Partial<DriverItem> => {
+  const out: Record<string, unknown> = { ...driver };
+  for (const key of OPTIONAL_DRIVER_FIELDS) {
+    let v = (driver as Record<string, unknown>)[key];
+    if (typeof v === "string") {
+      v = v.trim();
+      // CPF: send digits only (mock base uses unmasked CPF)
+      if (key === "registration") v = stripDigits(v as string);
+    }
+    out[key] = emptyToNull(v);
+  }
+  return out as Partial<DriverItem>;
+};
+
 const createDriver = async (data: Partial<DriverItem>): Promise<DriverItem> => {
-  if (USE_MOCK) return { ...data, id: crypto.randomUUID() } as DriverItem;
-  const res = await fetch(`${API_BASE}/Drivers`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+  const payload = normalizeDriverPayload(data);
+  if (USE_MOCK) return { ...payload, id: crypto.randomUUID() } as DriverItem;
+  const res = await fetch(`${API_BASE}/Drivers`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 };
 
 const updateDriver = async (data: Partial<DriverItem>): Promise<DriverItem> => {
-  if (USE_MOCK) return data as DriverItem;
-  const res = await fetch(`${API_BASE}/Drivers/UpdateDriver`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+  const payload = normalizeDriverPayload(data);
+  if (USE_MOCK) return payload as DriverItem;
+  const res = await fetch(`${API_BASE}/Drivers/UpdateDriver`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 };
 
+const SUB_ENTITY_ENDPOINTS = [
+  "DriversAttribution",
+  "DriversBase",
+  "DriversFleet",
+  "DriversPosition",
+  "DriversVacation",
+  "DriversLicense",
+  "DriverCourse",
+  "DriverDedicatedRoute",
+  "DriversOccurrence",
+  "DriverMessage",
+] as const;
+
 const deleteDriver = async (id: string): Promise<void> => {
   if (USE_MOCK) return;
+  // Cascade: delete every aggregated record before removing the main driver.
+  for (const endpoint of SUB_ENTITY_ENDPOINTS) {
+    const listRes = await fetch(`${API_BASE}/${endpoint}?Filter1Id=${id}`);
+    if (!listRes.ok) {
+      // Empty/404 list is acceptable; only fail on real errors.
+      if (listRes.status === 404) continue;
+      throw new Error(`cascade-list-failed:${endpoint}:${listRes.status}`);
+    }
+    let items: Array<{ id?: string }> = [];
+    try { items = await listRes.json(); } catch { items = []; }
+    if (!Array.isArray(items) || items.length === 0) continue;
+    for (const item of items) {
+      if (!item?.id) continue;
+      const delRes = await fetch(`${API_BASE}/${endpoint}/${item.id}`, { method: "DELETE" });
+      if (!delRes.ok && delRes.status !== 404) {
+        throw new Error(`cascade-delete-failed:${endpoint}:${delRes.status}`);
+      }
+    }
+  }
   const res = await fetch(`${API_BASE}/Drivers/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
 };
@@ -364,10 +456,13 @@ const VacationTable = ({ items, t, driverId, onAdd, onRemove }: VacationTablePro
       await onAdd(`${newStartDate}T00:00:00`, `${newEndDate}T00:00:00`);
       setNewStartDate(todayISO());
       setNewEndDate("");
+    } catch {
+      // keep fields on error
     } finally {
       setSaving(false);
     }
   };
+
 
   return (
     <div className="space-y-3">
@@ -453,13 +548,17 @@ const SubEntityTable = ({ items, lookupItems, lookupKey, lookupLabel: colLabel, 
     setSaving(true);
     try {
       await onAdd(newLookupId, `${newStartDate}T00:00:00`, newEndDate ? `${newEndDate}T00:00:00` : null);
+      // Only clear on success
       setNewLookupId("");
       setNewStartDate(todayISO());
       setNewEndDate("");
+    } catch {
+      // keep fields filled on error
     } finally {
       setSaving(false);
     }
   };
+
 
   return (
     <div className="space-y-3">
@@ -697,12 +796,20 @@ const DriverPage = () => {
       refetch();
     },
     onError: (err: Error) => {
-      toast({ title: "Erro", description: err.message, variant: "error" });
+      const isCascade = err.message.startsWith("cascade-");
+      toast({
+        title: isCascade
+          ? t("driver.deleteCascadeError", "Não foi possível excluir o motorista. Existem vínculos que não foram removidos.")
+          : "Erro",
+        description: isCascade ? undefined : err.message,
+        variant: "error",
+      });
     },
   });
 
   // === Generic sub-entity API helpers ===
   interface SubEntityItem { id?: string; driverId?: string; startDate?: string | null; endDate?: string | null; [k: string]: unknown }
+  type SubEntitySetter = Dispatch<SetStateAction<SubEntityItem[]>>;
 
   const [driverAttributionsList, setDriverAttributionsList] = useState<SubEntityItem[]>([]);
   const [driverBasesList, setDriverBasesList] = useState<SubEntityItem[]>([]);
@@ -735,23 +842,74 @@ const DriverPage = () => {
   const [newDedicatedLineStart, setNewDedicatedLineStart] = useState(todayISO());
   const [newDedicatedLineEnd, setNewDedicatedLineEnd] = useState("");
 
-  const fetchSubEntities = async (endpoint: string, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+  // Sort sub-entity list: newest startDate first; entries without a start date go last.
+  const sortSubEntities = (items: SubEntityItem[]): SubEntityItem[] => {
+    return [...items].sort((a, b) => {
+      const aDate = a.startDate ?? "";
+      const bDate = b.startDate ?? "";
+      if (!aDate && !bDate) return 0;
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      return bDate.localeCompare(aDate);
+    });
+  };
+
+  // Keep only items that belong to the current driver (defensive against API quirks).
+  const filterByDriver = (items: SubEntityItem[], driverId: string): SubEntityItem[] => {
+    return items.filter((item) => {
+      const flat = (item as Record<string, unknown>).driverId as string | undefined;
+      const nested = (item as { driver?: { id?: string } }).driver?.id;
+      if (!flat && !nested) return true;
+      return flat === driverId || nested === driverId;
+    });
+  };
+
+  const fetchSubEntities = async (endpoint: string, driverId: string, setter: SubEntitySetter) => {
     try {
       const res = await fetch(`${API_BASE}/${endpoint}?Filter1Id=${driverId}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data: SubEntityItem[] = await res.json();
-      // Filter client-side to ensure only records for this specific driver are shown
-      const filtered = data.filter((item) => item.driverId === driverId);
-      setter(filtered);
+      setter(sortSubEntities(filterByDriver(data, driverId)));
     } catch {
       setter([]);
     }
   };
 
-  const saveSubEntity = async (endpoint: string, idKey: string, lookupId: string, startDate: string, endDate: string | null, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+
+  const readSubEntityResponse = async (res: Response): Promise<SubEntityItem | null> => {
+    const text = await res.text();
+    if (!text) return null;
+    try {
+      return JSON.parse(text) as SubEntityItem;
+    } catch {
+      return null;
+    }
+  };
+
+  const upsertLocalSubEntity = (setter: SubEntitySetter, savedItem: SubEntityItem, idKey: string, lookupId: string, driverId: string, startDate: string) => {
+    setter((prev) => {
+      const savedId = savedItem.id ? String(savedItem.id) : "";
+      const existingIndex = prev.findIndex((item) => {
+        if (savedId) return String(item.id ?? "") === savedId;
+        return String(item.driverId ?? "") === driverId
+          && String(item[idKey] ?? "") === lookupId
+          && String(item.startDate ?? "") === startDate;
+      });
+
+      const next = existingIndex >= 0
+        ? prev.map((item, index) => index === existingIndex ? { ...item, ...savedItem } : item)
+        : [...prev, savedItem];
+
+      return sortSubEntities(filterByDriver(next, driverId));
+    });
+  };
+
+
+
+  const saveSubEntity = async (endpoint: string, idKey: string, lookupId: string, startDate: string, endDate: string | null, driverId: string, setter: SubEntitySetter) => {
     if (endDate && endDate < startDate) {
       toast({ title: t("driverVacation.startAfterEnd"), variant: "destructive" });
-      return;
+      throw new Error("invalid-dates");
     }
     const payload = { driverId, [idKey]: lookupId, startDate, endDate };
     const res = await fetch(`${API_BASE}/${endpoint}`, {
@@ -759,20 +917,28 @@ const DriverPage = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    if (!res.ok) {
+      toast({ title: t("common.saveError", "Erro ao salvar"), variant: "destructive" });
+      throw new Error(`API error: ${res.status}`);
+    }
+    const savedItem = await readSubEntityResponse(res);
+    upsertLocalSubEntity(setter, { driverId, [idKey]: lookupId, startDate, endDate, ...(savedItem ?? {}) }, idKey, lookupId, driverId, startDate);
     toast({ title: t("common.saveSuccess"), variant: "success" });
-    await fetchSubEntities(endpoint, driverId, setter);
   };
 
-  const deleteSubEntityById = async (endpoint: string, id: string, driverId: string, setter: (items: SubEntityItem[]) => void) => {
+  const deleteSubEntityById = async (endpoint: string, id: string, driverId: string, setter: SubEntitySetter) => {
     const res = await fetch(`${API_BASE}/${endpoint}/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    if (!res.ok) {
+      toast({ title: t("common.deleteError", "Erro ao excluir"), variant: "destructive" });
+      throw new Error(`API error: ${res.status}`);
+    }
+    setter((prev) => prev.filter((item) => String(item.id ?? "") !== id));
     toast({ title: t("common.deleteSuccess"), variant: "success" });
-    await fetchSubEntities(endpoint, driverId, setter);
   };
+
 
   const fetchDriverLicenses = async (driverId: string) => {
-    fetchSubEntities("DriversLicense", driverId, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+    fetchSubEntities("DriversLicense", driverId, setDriverLicenses as unknown as SubEntitySetter);
   };
 
   const saveDriverLicense = async () => {
@@ -781,7 +947,7 @@ const DriverPage = () => {
       return;
     }
     try {
-      await saveSubEntity("DriversLicense", "licenseId", newLicenseId, `${newLicenseStart}T00:00:00`, newLicenseEnd ? `${newLicenseEnd}T00:00:00` : null, formData.id, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+      await saveSubEntity("DriversLicense", "licenseId", newLicenseId, `${newLicenseStart}T00:00:00`, newLicenseEnd ? `${newLicenseEnd}T00:00:00` : null, formData.id, setDriverLicenses as unknown as SubEntitySetter);
       setNewLicenseId("");
       setNewLicenseStart(todayISO());
       setNewLicenseEnd("");
@@ -792,7 +958,7 @@ const DriverPage = () => {
 
   const deleteDriverLicense = async (id: string) => {
     try {
-      await deleteSubEntityById("DriversLicense", id, formData.id!, setDriverLicenses as unknown as (items: SubEntityItem[]) => void);
+      await deleteSubEntityById("DriversLicense", id, formData.id!, setDriverLicenses as unknown as SubEntitySetter);
     } catch (err: unknown) {
       toast({ title: "Erro", description: (err as Error).message, variant: "error" });
     }
@@ -882,6 +1048,11 @@ const DriverPage = () => {
     if (!formData.lastName?.trim()) errors.lastName = true;
     if (!formData.nickName?.trim()) errors.nickName = true;
     if (!formData.registration?.trim()) errors.registration = true;
+    if (!formData.birthdate) errors.birthdate = true;
+    if (!formData.admission) errors.admission = true;
+    if (formData.email && !isValidEmail(formData.email.trim())) errors.email = true;
+    if (formData.phone1 && !isValidPhoneBR(formData.phone1)) errors.phone1 = true;
+    if (formData.phone2 && !isValidPhoneBR(formData.phone2)) errors.phone2 = true;
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast({ title: t("common.requiredFields"), variant: "destructive" });
@@ -889,18 +1060,33 @@ const DriverPage = () => {
     }
     setFormErrors({});
 
+    // countryId is required by the API — default to Brasil if not selected
+    const defaultCountryId =
+      countries?.find((c) => c.code?.toUpperCase() === "BR")?.id ||
+      countries?.[0]?.id;
+    const ensuredCountryId = formData.countryId || defaultCountryId;
+    if (!ensuredCountryId) {
+      setFormErrors({ countryId: true });
+      toast({ title: t("driver.countryRequired", "País é obrigatório"), variant: "destructive" });
+      return;
+    }
+    const formWithCountry = { ...formData, countryId: ensuredCountryId };
+
     // If resign date is filled, ask about isActive + endDates
-    if (formData.resign && formData.isActive) {
-      setPendingResignDate(formData.resign);
+    if (formWithCountry.resign && formWithCountry.isActive) {
+      setPendingResignDate(formWithCountry.resign);
       setShowResignConfirm(true);
       return;
     }
-    const { driverAttributions, driverBases, driverFleets, driverPositions, ...driverData } = formData;
+    const { driverAttributions, driverBases, driverFleets, driverPositions, ...driverData } = formWithCountry;
     saveMutation.mutate(driverData);
   };
 
   const confirmResignAndSave = (autoFill: boolean) => {
-    let data = { ...formData };
+    const defaultCountryId =
+      countries?.find((c) => c.code?.toUpperCase() === "BR")?.id ||
+      countries?.[0]?.id;
+    let data = { ...formData, countryId: formData.countryId || defaultCountryId };
     if (autoFill && pendingResignDate) {
       data.isActive = false;
     }
@@ -959,7 +1145,7 @@ const DriverPage = () => {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.registration")} <span className="text-destructive">*</span></Label>
-                  <Input className={`h-8 text-xs ${formErrors.registration ? "border-destructive" : ""}`} value={formData.registration || ""} onChange={(e) => updateForm("registration", e.target.value)} />
+                  <Input className={`h-8 text-xs ${formErrors.registration ? "border-destructive" : ""}`} value={maskCPF(formData.registration || "")} placeholder="000.000.000-00" maxLength={14} onChange={(e) => updateForm("registration", maskCPF(e.target.value))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.identification")}</Label>
@@ -972,6 +1158,8 @@ const DriverPage = () => {
                     <SelectContent>
                       <SelectItem value="M">{t("driver.male")}</SelectItem>
                       <SelectItem value="F">{t("driver.female")}</SelectItem>
+                      <SelectItem value="O">{t("driver.other", "Outro")}</SelectItem>
+
                     </SelectContent>
                   </Select>
                 </div>
@@ -979,12 +1167,12 @@ const DriverPage = () => {
 
               <div className="grid grid-cols-4 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.birthdate")}</Label>
-                  <DatePickerField value={formData.birthdate} onChange={(v) => updateForm("birthdate", v)} className="h-8" />
+                  <Label className="text-xs text-muted-foreground">{t("driver.birthdate")} <span className="text-destructive">✱</span></Label>
+                  <DatePickerField value={formData.birthdate} onChange={(v) => updateForm("birthdate", v)} className="h-8" hasError={formErrors.birthdate} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.admission")}</Label>
-                  <DatePickerField value={formData.admission} onChange={(v) => updateForm("admission", v)} className="h-8" />
+                  <Label className="text-xs text-muted-foreground">{t("driver.admission")} <span className="text-destructive">✱</span></Label>
+                  <DatePickerField value={formData.admission} onChange={(v) => updateForm("admission", v)} className="h-8" hasError={formErrors.admission} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.resign")}</Label>
@@ -999,11 +1187,11 @@ const DriverPage = () => {
               <div className="grid grid-cols-4 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.integrationCode")}</Label>
-                  <Input className="h-8 text-xs" value={formData.integrationCode || ""} onChange={(e) => updateForm("integrationCode", e.target.value)} />
+                  <Input className="h-8 text-xs" value={formData.integrationCode || ""} onChange={(e) => updateForm("integrationCode", e.target.value.replace(/[^A-Za-z0-9]/g, ""))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.integrationCodeGPS")}</Label>
-                  <Input className="h-8 text-xs" value={formData.integrationCodeGPS || ""} onChange={(e) => updateForm("integrationCodeGPS", e.target.value)} />
+                  <Input className="h-8 text-xs" value={formData.integrationCodeGPS || ""} onChange={(e) => updateForm("integrationCodeGPS", e.target.value.replace(/[^A-Za-z0-9]/g, ""))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.cnh")}</Label>
@@ -1023,22 +1211,22 @@ const DriverPage = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.email")}</Label>
-                  <Input type="email" className="h-8 text-xs" value={formData.email || ""} onChange={(e) => updateForm("email", e.target.value)} />
+                  <Input type="email" className={`h-8 text-xs ${formErrors.email ? "border-destructive" : ""}`} value={formData.email || ""} placeholder="exemplo@dominio.com" onChange={(e) => updateForm("email", e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.phone1")}</Label>
-                  <Input className="h-8 text-xs" value={formData.phone1 || ""} onChange={(e) => updateForm("phone1", e.target.value)} />
+                  <Input className={`h-8 text-xs ${formErrors.phone1 ? "border-destructive" : ""}`} value={maskPhoneBR(formData.phone1 || "")} placeholder="(00) 00000-0000" maxLength={15} onChange={(e) => updateForm("phone1", maskPhoneBR(e.target.value))} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.phone2")}</Label>
-                  <Input className="h-8 text-xs" value={formData.phone2 || ""} onChange={(e) => updateForm("phone2", e.target.value)} />
+                  <Input className={`h-8 text-xs ${formErrors.phone2 ? "border-destructive" : ""}`} value={maskPhoneBR(formData.phone2 || "")} placeholder="(00) 00000-0000" maxLength={15} onChange={(e) => updateForm("phone2", maskPhoneBR(e.target.value))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("driver.zipCode")}</Label>
-                  <Input className="h-8 text-xs" value={formData.zipCode || ""} onChange={(e) => updateForm("zipCode", e.target.value)} />
+                  <Input className="h-8 text-xs" value={maskCEP(formData.zipCode || "")} placeholder="00000-000" maxLength={9} onChange={(e) => updateForm("zipCode", maskCEP(e.target.value))} />
                 </div>
               </div>
 
@@ -1083,7 +1271,7 @@ const DriverPage = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("driver.country")}</Label>
+                  <Label className="text-xs text-muted-foreground">{t("driver.country")} <span className="text-destructive">✱</span></Label>
                   <LookupSearchField
                     endpoint="Countries"
                     labelFn="codeName"
@@ -1289,8 +1477,9 @@ const DriverPage = () => {
                           body: JSON.stringify(payload),
                         });
                         if (!res.ok) throw new Error(`API error: ${res.status}`);
+                        const savedItem = await readSubEntityResponse(res);
+                        setDriverVacationsList((prev) => sortSubEntities(filterByDriver([...prev, { ...payload, ...(savedItem ?? {}) }], formData.id!)));
                         toast({ title: t("common.saveSuccess"), variant: "success" });
-                        await fetchSubEntities("DriversVacation", formData.id, setDriverVacationsList);
                       }}
                       onRemove={async (id) => {
                         if (!formData.id) return;
@@ -1480,12 +1669,20 @@ const DriverPage = () => {
                                     }),
                                   });
                                   if (!res.ok) throw new Error("Erro");
+                                  const payload = {
+                                    driverId: formData.id,
+                                    dtOccurrence: occDtOccurrence,
+                                    description: occDescription,
+                                    responsible: occResponsible,
+                                    warningFlag: occWarningFlag,
+                                  };
+                                  const savedItem = await readSubEntityResponse(res);
+                                  setDriverOccurrencesList((prev) => sortSubEntities(filterByDriver([...prev, { ...payload, ...(savedItem ?? {}) }], formData.id!)));
                                   toast({ title: t("common.saveSuccess"), variant: "success" });
                                   setOccDtOccurrence(`${todayISO()}T00:00:00`);
                                   setOccDescription("");
                                   setOccResponsible("");
                                   setOccWarningFlag(true);
-                                  fetchSubEntities("DriversOccurrence", formData.id, setDriverOccurrencesList);
                                 } catch (err: unknown) {
                                   toast({ title: "Erro", description: (err as Error).message, variant: "error" });
                                 } finally {

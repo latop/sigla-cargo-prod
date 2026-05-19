@@ -39,6 +39,8 @@ import { useLocalizedLogos } from "@/hooks/use-localized-logos";
 import clientLogo from "@/assets/client-logo.png";
 import { APP_VERSION } from "@/pages/Changelog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile, isPathAllowedForProfile, isGroupFullyAllowedForProfile, isProfileUnrestricted } from "@/contexts/ProfileContext";
+import { filterMockGroupsForAuth } from "@/config/routeRegistry";
 
 interface MenuItem {
   titleKey: string;
@@ -195,10 +197,34 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { openTab, tabs, activeTabId, MAX_TABS } = useTabs();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { siglaLogo, siglaLogoWhite, latopLogo } = useLocalizedLogos();
   const userName = user?.name || "Usuário";
   const userGpid = user?.gpid || "";
   const userInitial = userName.charAt(0).toUpperCase();
+
+  // Mock pages are only visible to users that signed in with email + password.
+  // Derive from the reactive auth user so login/logout updates the menu without reload.
+  const isPasswordAuth = !!user?.accessToken;
+
+  // Filter menu groups based on operational profile (UI guidance only)
+  const visibleMenuGroups = useMemo(() => {
+    const profileFiltered = isProfileUnrestricted(profile)
+      ? menuGroups
+      : (menuGroups
+          .map((g) => {
+            if (g.directLink) {
+              return isPathAllowedForProfile(profile, g.directLink.url) ? g : null;
+            }
+            if (isGroupFullyAllowedForProfile(profile, g.labelKey)) return g;
+            const items = g.items.filter((it) => isPathAllowedForProfile(profile, it.url));
+            if (items.length === 0) return null;
+            return { ...g, items };
+          })
+          .filter(Boolean) as MenuGroup[]);
+
+    return filterMockGroupsForAuth(profileFiltered, isPasswordAuth);
+  }, [profile, isPasswordAuth]);
 
   const handleNavClick = useCallback((item: MenuItem) => {
     const success = openTab({ id: item.url, titleKey: item.titleKey, icon: item.icon });
@@ -216,15 +242,15 @@ export function AppSidebar() {
 
   // Controlled open state for each group
   const activeGroups = useMemo(() => 
-    menuGroups
+    visibleMenuGroups
       .filter((g) => g.items.some((item) => location.pathname === item.url))
       .map((g) => g.labelKey),
-    [location.pathname]
+    [location.pathname, visibleMenuGroups]
   );
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    menuGroups.forEach((g) => {
+    visibleMenuGroups.forEach((g) => {
       initial[g.labelKey] = activeGroups.includes(g.labelKey);
     });
     return initial;
@@ -236,15 +262,15 @@ export function AppSidebar() {
 
   const expandAll = useCallback(() => {
     const all: Record<string, boolean> = {};
-    menuGroups.forEach((g) => { all[g.labelKey] = true; });
+    visibleMenuGroups.forEach((g) => { all[g.labelKey] = true; });
     setOpenGroups(all);
-  }, []);
+  }, [visibleMenuGroups]);
 
   const collapseAll = useCallback(() => {
     const all: Record<string, boolean> = {};
-    menuGroups.forEach((g) => { all[g.labelKey] = false; });
+    visibleMenuGroups.forEach((g) => { all[g.labelKey] = false; });
     setOpenGroups(all);
-  }, []);
+  }, [visibleMenuGroups]);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -274,7 +300,7 @@ export function AppSidebar() {
             </button>
           </div>
         )}
-        {menuGroups.map((group) => {
+        {visibleMenuGroups.map((group) => {
           // Direct link groups (no submenu)
           if (group.directLink) {
             return (

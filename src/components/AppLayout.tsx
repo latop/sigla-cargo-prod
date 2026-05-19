@@ -4,13 +4,17 @@ import { useTranslation } from "react-i18next";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, getMenuItemByPath } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Globe, LogOut } from "lucide-react";
+import { Globe, LogOut, UserCog } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TabBar } from "@/components/TabBar";
 import { FunctionSearch } from "@/components/FunctionSearch";
 import { TabsProvider, useTabs } from "@/contexts/TabsContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getRouteComponent } from "@/config/routeRegistry";
+import { useProfile, isPathAllowedForProfile } from "@/contexts/ProfileContext";
+import ProfileSelect from "@/pages/ProfileSelect";
+import SimplifiedHome from "@/pages/SimplifiedHome";
+import { getRouteComponent, shouldRedirectFromMockPath } from "@/config/routeRegistry";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +37,36 @@ function AppLayoutInner() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { tabs, activeTabId, openTab } = useTabs();
-  const { logout } = useAuth();
+  const { tabs, activeTabId, openTab, closeTab } = useTabs();
+  const { logout, user } = useAuth();
+  const isPasswordAuth = !!user?.accessToken;
+  const { profile, clearProfile } = useProfile();
   const [pageTitle, setPageTitle] = useState("");
   const [PageIcon, setPageIcon] = useState<React.ComponentType<{ className?: string }> | null>(null);
+
+  // Enforce profile access by redirecting disallowed paths to /home (UI guidance only)
+  useEffect(() => {
+    if (!profile) return;
+    const path = location.pathname;
+    const utility = ["/home", "/changelog", "/manual", "/technical-manual"];
+    if (utility.includes(path)) return;
+    // SSO users (no accessToken) cannot access mock screens
+    if (shouldRedirectFromMockPath(path, isPasswordAuth)) {
+      if (tabs.some((t) => t.id === path)) closeTab(path);
+      toast.warning(
+        t(
+          "access.mockBlockedForSSO",
+          "Esta tela ainda está em desenvolvimento (mock) e só está disponível para acesso com usuário e senha. Usuários SSO veem apenas as telas concluídas."
+        )
+      );
+      navigate("/home", { replace: true });
+      return;
+    }
+    if (!isPathAllowedForProfile(profile, path)) {
+      if (tabs.some((t) => t.id === path)) closeTab(path);
+      navigate("/home", { replace: true });
+    }
+  }, [location.pathname, profile, isPasswordAuth]);
 
   // Sync URL to active tab on mount / URL change
   useEffect(() => {
@@ -60,6 +90,13 @@ function AppLayoutInner() {
   const isTabRoute = tabs.some((t) => t.id === location.pathname);
   const showTabContent = tabs.length > 0;
 
+  // If no operational profile selected yet, render selection screen (after all hooks)
+  if (!profile) {
+    return <ProfileSelect />;
+  }
+
+  const isRestrictedProfile = profile === "portaria" || profile === "execucao";
+
   return (
     <div className="min-h-screen flex w-full">
       <AppSidebar />
@@ -75,6 +112,16 @@ function AppLayoutInner() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => clearProfile()}
+              title={t("profile.switch")}
+            >
+              <UserCog className="h-3.5 w-3.5 mr-1" />
+              <span className="hidden md:inline">{t("profile.switch")}</span>
+            </Button>
             <ThemeToggle />
             <FunctionSearch />
             <DropdownMenu>
@@ -154,7 +201,7 @@ function AppLayoutInner() {
             {/* If no tabs and not a utility page, show dashboard */}
             {tabs.length === 0 && !["/changelog", "/manual", "/technical-manual"].includes(location.pathname) && (
               <div className="flex h-full min-h-0 flex-col p-4">
-                <DashboardFallback setPageTitle={setPageTitle} setPageIcon={setPageIcon} />
+                <DashboardFallback setPageTitle={setPageTitle} setPageIcon={setPageIcon} useSimplified={isRestrictedProfile} />
               </div>
             )}
           </React.Suspense>
@@ -219,14 +266,16 @@ export function usePageContext(): PageContext | undefined {
 function DashboardFallback({
   setPageTitle,
   setPageIcon,
+  useSimplified,
 }: {
   setPageTitle: (t: string) => void;
   setPageIcon: (i: React.ComponentType<{ className?: string }> | null) => void;
+  useSimplified?: boolean;
 }) {
-  const Dashboard = getRouteComponent("/home");
+  const Component = useSimplified ? SimplifiedHome : getRouteComponent("/home");
   return (
     <PageContextProvider setPageTitle={setPageTitle} setPageIcon={setPageIcon} isActive={true}>
-      <Dashboard />
+      <Component />
     </PageContextProvider>
   );
 }

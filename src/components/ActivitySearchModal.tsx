@@ -173,8 +173,8 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect, forceActiveO
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">{t("activity.searchTitle") || "Pesquisar Atividade"}</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de atividades com filtros</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("activity.searchTitle")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.activityDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}
@@ -190,7 +190,7 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect, forceActiveO
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">{t("activity.activityType") || "Tipo de Atividade"}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("activity.activityType")}</label>
             <Select value={filterActivityTypeCode} onValueChange={setFilterActivityTypeCode}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder={t("common.selectAll")} />
@@ -236,7 +236,7 @@ export function ActivitySearchModal({ open, onOpenChange, onSelect, forceActiveO
               <TableRow>
                 <TableHead className="h-7 text-xs px-2">{t("common.code")}</TableHead>
                 <TableHead className="h-7 text-xs px-2">{t("common.description")}</TableHead>
-                <TableHead className="h-7 text-xs px-2">{t("activity.activityType") || "Tipo Atividade"}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("activity.activityType")}</TableHead>
                 <TableHead className="h-7 text-xs px-2 w-[90px] text-center">{t("common.status")}</TableHead>
               </TableRow>
             </TableHeader>

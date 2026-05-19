@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,24 +45,26 @@ const formatDT = (v?: string | null) => {
 const toInputDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-const COLUMNS = [
-  { key: "demandLabel", label: "DT/STO" },
-  { key: "locationOrigLabel", label: "Origem" },
-  { key: "locationDestLabel", label: "Destino" },
-  { key: "lineLabel", label: "Linha" },
-  { key: "statusLabel", label: "Status" },
-  { key: "startPlannedLabel", label: "Iní. Plan." },
-  { key: "endPlannedLabel", label: "Fim Plan." },
-  { key: "tripTypeLabel", label: "Tipo Viagem" },
-];
+const COLUMN_KEYS = [
+  { key: "demandLabel", labelKey: "common.demand" },
+  { key: "locationOrigLabel", labelKey: "common.origin" },
+  { key: "locationDestLabel", labelKey: "common.destination" },
+  { key: "lineLabel", labelKey: "common.line" },
+  { key: "statusLabel", labelKey: "common.status" },
+  { key: "startPlannedLabel", labelKey: "common.startPlanned" },
+  { key: "endPlannedLabel", labelKey: "common.endPlanned" },
+  { key: "tripTypeLabel", labelKey: "common.tripType" },
+] as const;
 
-const statusMap: Record<string, string> = {
-  P: "Previsto",
-  A: "Em andamento",
-  E: "Executado",
+const STATUS_KEY_MAP: Record<string, string> = {
+  P: "tripStatus.scheduled",
+  A: "tripStatus.inProgress",
+  E: "tripStatus.executed",
 };
 
 export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTripSearchModalProps) {
+  const { t } = useTranslation();
+  const COLUMNS = useMemo(() => COLUMN_KEYS.map((c) => ({ key: c.key, label: t(c.labelKey) })), [t]);
   const [filterSTO, setFilterSTO] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -140,7 +143,10 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
           locationOrigLabel: locationOrig?.code ?? (item.locationOrigCode as string) ?? "--",
           locationDestLabel: locationDest?.code ?? (item.locationDestCode as string) ?? "--",
           lineLabel: line?.code ?? (item.lineCode as string) ?? "--",
-          statusLabel: statusMap[item.flgStatus as string] || (item.flgStatus as string) || "--",
+          statusLabel: (() => {
+            const k = STATUS_KEY_MAP[item.flgStatus as string];
+            return k ? t(k) : ((item.flgStatus as string) || "--");
+          })(),
           startPlannedLabel: formatDT(item.startPlanned as string | null),
           endPlannedLabel: formatDT(item.endPlanned as string | null),
           tripTypeLabel: tripType?.code ?? "--",
@@ -180,24 +186,24 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">Pesquisar Viagem Diária</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de viagens diárias</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("common.searchDailyTrip")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.dailyTripDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}
         <div className="grid grid-cols-5 gap-2">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">DT/STO</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.demand")}</label>
             <Input
               value={filterSTO}
               onChange={(e) => setFilterSTO(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter" && canSearch) doSearch(1); }}
-              placeholder="STO ou DT..."
+              placeholder={t("common.demandPlaceholder") + "..."}
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Data Início</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.startDate")}</label>
             <Input
               type="date"
               value={filterStartDate}
@@ -206,7 +212,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Data Fim</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.endDate")}</label>
             <Input
               type="date"
               value={filterEndDate}
@@ -215,7 +221,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Origem</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.origin")}</label>
             <LookupSearchField
               endpoint="Location"
               labelFn="codeOnly"
@@ -230,7 +236,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
                   setFilterOrigLabel("");
                 }
               }}
-              placeholder="Origem..."
+              placeholder={t("common.origin") + "..."}
               initialLabel={filterOrigLabel}
               nullable
               transformItem={(item) => ({
@@ -242,7 +248,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Destino</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.destination")}</label>
             <LookupSearchField
               endpoint="Location"
               labelFn="codeOnly"
@@ -257,7 +263,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
                   setFilterDestLabel("");
                 }
               }}
-              placeholder="Destino..."
+              placeholder={t("common.destination") + "..."}
               initialLabel={filterDestLabel}
               nullable
               transformItem={(item) => ({
@@ -272,7 +278,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
 
         {!canSearch && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            Informe o DT/STO ou a Data Início para pesquisar.
+            {t("common.fillDemandOrStartDate")}
           </p>
         )}
 
@@ -284,7 +290,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
             disabled={loading || !canSearch}
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            Pesquisar
+            {t("common.search")}
           </Button>
         </div>
 
@@ -304,7 +310,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={COLUMNS.length} className="text-center text-xs text-muted-foreground py-8">
-                    {loading ? "Carregando..." : searched ? "Nenhum resultado encontrado." : "Preencha os filtros e clique em Pesquisar."}
+                    {loading ? t("common.loading") : searched ? t("common.noResults") : t("common.fillFiltersAndSearch")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -340,7 +346,7 @@ export function DailyTripSearchModal({ open, onOpenChange, onSelect }: DailyTrip
                   ))}
                 </SelectContent>
               </Select>
-              <span>{pagination.TotalCount} registro(s)</span>
+              <span>{pagination.TotalCount} {t("common.records")}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button

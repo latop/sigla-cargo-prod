@@ -86,6 +86,7 @@ const screens: ScreenDoc[] = [
       "Ordenação Gantt: veículos com viagem primeiro (por placa), depois veículos sem viagem (por placa)",
       "Listagem: colunas Placa, Demanda, Origem, Destino, Início/Fim Plan., Início/Fim Real, Motorista, Status",
       "Listagem filtra apenas TRIP e TRIP EXEC",
+      "v1.20.0 — Contadores diferenciam 'viagens nesta página' (length da resposta paginada) de 'total de veículos' (cardinalidade única por licensePlate)",
     ],
     ganttAttributes: [
       { attribute: "ROW_HEIGHT", value: "40", description: "Altura em px de cada linha de veículo" },
@@ -257,6 +258,7 @@ const screens: ScreenDoc[] = [
       "Histórico de importações com filtro por período",
       "Ordenação por colunas no histórico (ascendente/descendente)",
       "Download de template Excel",
+      "v1.20.0 — Dropdown 'Tipo de Importação' (após Localidade/Base) com 3 opções: 'Rota - Por entrega (reverso)' [default], 'Rota - Por saída (forward)', 'Janela comercial'. O valor é enviado ao backend como parâmetro do importGTMSCheck.",
     ],
   },
 
@@ -706,7 +708,7 @@ const architectureNotes = [
   },
   {
     title: "API Base",
-    items: [`URL: https://apicarga.azurewebsites.net`, "Autenticação: Bearer Token (JWT) via header Authorization", "Paginação: headers x-pagination com PageNumber/PageSize", "Filtros: padrão FilterNString, FilterNId, FilterNBool"],
+    items: [`URL: https://apicarga.azurewebsites.net`, "Autenticação: Bearer Token (JWT) via header Authorization", "Paginação: headers x-pagination com PageNumber/PageSize", "Relatórios: header x-report-rowcount fornece o total real de linhas (fallback: x-pagination → length do array)", "Filtros: padrão FilterNString, FilterNId, FilterNBool", "TripOperationalStatus (enum): formaliza status operacionais consumidos por dashboards e relatórios"],
   },
   {
     title: "Padrões de Design",

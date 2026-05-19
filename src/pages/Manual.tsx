@@ -143,7 +143,10 @@ const manualData: ManualGroup[] = [
         objective:
           "Autenticar o usuário no sistema. Suporta login por e-mail/senha e SSO (Single Sign-On) corporativo.",
         extra:
-          "Após o login, o usuário é redirecionado ao Dashboard. Em caso de falha, uma mensagem de erro é exibida.",
+          "Após o login, o usuário é redirecionado ao Dashboard. Em caso de falha, uma mensagem de erro é exibida.\n\n" +
+          "Importante: telas ainda em desenvolvimento (mock) só ficam visíveis para usuários que entram por e-mail e senha. " +
+          "Usuários autenticados via SSO visualizam apenas as telas concluídas — tanto no menu lateral quanto via URL direta " +
+          "(neste caso, o sistema redireciona automaticamente para o Dashboard e exibe um aviso).",
       },
       {
         name: "Navegação e Abas",
@@ -236,7 +239,9 @@ const manualData: ManualGroup[] = [
           "• Suporte a zoom no Gantt (6h, 12h, 24h).\n" +
           "• Ordenação inteligente no Gantt: veículos com viagem no período aparecem primeiro (ordenados por placa), seguidos pelos veículos sem viagem (também ordenados por placa).\n" +
           "• Paginação server-side com seletor de registros por página.\n" +
-          "• Exportação de dados em Excel e PDF.",
+          "• Exportação de dados em Excel e PDF.\n\n" +
+          "Novidade v1.20.0 — Contadores corrigidos:\n" +
+          "• A barra de status agora distingue 'viagens nesta página' (paginação) de 'total de veículos' (frota), evitando leituras erradas quando o filtro retorna muitas viagens em poucos veículos.",
       },
     ],
   },
@@ -460,13 +465,20 @@ const manualData: ManualGroup[] = [
         name: "Importação de Demandas",
         route: "/import-map",
         objective:
-          "Importar demandas logísticas via upload de arquivo Excel (.xlsx, .xls, .csv). O usuário seleciona o Grupo de Localidade (dropdown dinâmico da API) e arrasta ou seleciona o arquivo. O sistema valida o arquivo via endpoint de check, exibe barra de progresso e o resultado da verificação.",
+          "Importar demandas logísticas via upload de arquivo Excel (.xlsx, .xls, .csv). O usuário seleciona o Grupo de Localidade (dropdown dinâmico da API), o Tipo de Importação e arrasta ou seleciona o arquivo. O sistema valida o arquivo via endpoint de check, exibe barra de progresso e o resultado da verificação.",
         filters:
           "Data Inicial e Data Final para consultar o histórico de importações. O período padrão é D-1 a D+1.",
         listing:
           "Tabela de histórico com colunas: Arquivo, Data/Hora, Status e Resultado do check. As colunas podem ser ordenadas clicando no cabeçalho (ascendente/descendente).",
         creation:
-          "Upload de arquivo com seleção obrigatória de Grupo de Localidade. Clique em 'Importar' para enviar.",
+          "Upload de arquivo com seleção obrigatória de Grupo de Localidade e Tipo de Importação. Clique em 'Importar' para enviar.",
+        extra:
+          "Novidade v1.20.0 — Tipo de Importação:\n" +
+          "Após selecionar a localidade/base, o usuário deve escolher o tipo de importação no dropdown:\n" +
+          "• Rota - Por entrega (reverso) — padrão; calcula a escala a partir do horário de entrega para trás.\n" +
+          "• Rota - Por saída (forward) — calcula a escala a partir do horário de saída para frente.\n" +
+          "• Janela comercial — usa as janelas comerciais cadastradas para definir o horário.\n\n" +
+          "O tipo escolhido define como o backend interpretará as colunas de horário do arquivo importado.",
       },
     ],
   },
@@ -539,7 +551,10 @@ const manualData: ManualGroup[] = [
           "• Tipos de saída: Visualizar (tabela em tela) ou Excel (download direto do arquivo .xlsx).\n" +
           "• Parâmetros são gerados automaticamente com base no tipo (date, string, number) definido pelo backend.\n" +
           "• Visualização em tela permite exportação posterior em Excel e PDF.\n" +
-          "• Colunas da tabela de resultado são geradas dinamicamente a partir dos campos retornados pela API.",
+          "• Colunas da tabela de resultado são geradas dinamicamente a partir dos campos retornados pela API.\n\n" +
+          "Novidade v1.20.0 — Total de registros confiável:\n" +
+          "• A contagem total agora prioriza o header 'x-report-rowcount' enviado pelo backend, com fallback para 'x-pagination' e, em último caso, para o tamanho do array retornado.\n" +
+          "• Resultado: o rodapé 'X registros' passa a refletir o total real do relatório, mesmo em consultas paginadas.",
       },
       {
         name: "Parâmetros Administrativos",

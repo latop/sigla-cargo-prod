@@ -24,6 +24,7 @@ import {
 import { useLocalizedLogos } from "@/hooks/use-localized-logos";
 import clientLogo from "@/assets/client-logo.png";
 import { authFetch } from "@/lib/auth-fetch";
+import { GpsStatusBadge } from "@/components/GpsStatusBadge";
 
 
 /* ─── Types ──────────────────────────────────────── */
@@ -153,14 +154,27 @@ const Dashboard = () => {
   const completionRate = summary?.completionRate ?? 0;
   const cancelRate = summary?.cancelRate ?? 0;
 
-  // Status pie data
-  const statusMap = [
-    { key: "planned", label: { pt: "Planejadas", en: "Planned", es: "Planificadas" }, count: plannedCount, color: "hsl(220, 72%, 35%)" },
-    { key: "progress", label: { pt: "Em Execução", en: "In Progress", es: "En Ejecución" }, count: inProgressCount, color: "hsl(210, 80%, 55%)" },
-    { key: "completed", label: { pt: "Concluídas", en: "Completed", es: "Completadas" }, count: completedCount, color: "hsl(142, 71%, 45%)" },
-    { key: "delayed", label: { pt: "Atrasadas", en: "Delayed", es: "Retrasadas" }, count: delayedCount, color: "hsl(38, 92%, 50%)" },
-    { key: "cancelled", label: { pt: "Canceladas", en: "Cancelled", es: "Canceladas" }, count: cancelledCount, color: "hsl(0, 84%, 60%)" },
-  ].filter((s) => s.count > 0);
+  // Status pie data — mutually exclusive categories only.
+  // Normalize against totalTrips so the sum of slices always equals totalToday,
+  // independent of how the back-end reports status/atraso. Any positive residual
+  // (totalTrips - known categories) is bucketed as "Outras" so nothing is hidden;
+  // a negative residual (sum > total) means double counting → clamp to total.
+  const rawStatus = [
+    { key: "planned", label: { pt: "Planejadas", en: "Planned", es: "Planificadas" }, count: Math.max(0, plannedCount), color: "hsl(220, 72%, 35%)" },
+    { key: "progress", label: { pt: "Em Execução", en: "In Progress", es: "En Ejecución" }, count: Math.max(0, inProgressCount), color: "hsl(210, 80%, 55%)" },
+    { key: "completed", label: { pt: "Concluídas", en: "Completed", es: "Completadas" }, count: Math.max(0, completedCount), color: "hsl(142, 71%, 45%)" },
+    { key: "cancelled", label: { pt: "Canceladas", en: "Cancelled", es: "Canceladas" }, count: Math.max(0, cancelledCount), color: "hsl(0, 84%, 60%)" },
+  ];
+  const knownSum = rawStatus.reduce((acc, s) => acc + s.count, 0);
+  const residual = totalToday - knownSum;
+  const reconciledStatus = residual > 0
+    ? [...rawStatus, { key: "other", label: { pt: "Outras", en: "Other", es: "Otras" }, count: residual, color: "hsl(220, 9%, 60%)" }]
+    : residual < 0 && knownSum > 0
+      // Sum overshoots total (double counting upstream) — scale down proportionally to match totalToday.
+      ? rawStatus.map((s) => ({ ...s, count: Math.round((s.count * totalToday) / knownSum) }))
+      : rawStatus;
+  const statusMap = reconciledStatus.filter((s) => s.count > 0);
+  const pieSum = statusMap.reduce((acc, s) => acc + s.count, 0);
 
   const pieData = statusMap.map((s) => ({ name: s.label[lang], value: s.count, fill: s.color }));
 
@@ -292,6 +306,7 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <GpsStatusBadge />
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleRefresh}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar
@@ -412,13 +427,24 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
-                    {statusMap.map((s) => (
+                    {reconciledStatus.map((s) => (
                       <div key={s.key} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                        <span className="text-[10px] text-muted-foreground truncate">{s.label[lang]}</span>
-                        <span className="text-[10px] font-bold ml-auto">{s.count}</span>
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: s.color, opacity: s.count > 0 ? 1 : 0.35 }}
+                        />
+                        <span className={`text-[10px] truncate ${s.count > 0 ? "text-muted-foreground" : "text-muted-foreground/60"}`}>
+                          {s.label[lang]}
+                        </span>
+                        <span className={`text-[10px] ml-auto ${s.count > 0 ? "font-bold" : "font-medium text-muted-foreground/60"}`}>
+                          {s.count}
+                        </span>
                       </div>
                     ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t text-[10px]">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-bold">{pieSum} / {totalToday}</span>
                   </div>
                 </>
               ) : (
@@ -446,12 +472,11 @@ const Dashboard = () => {
                   <span className="text-[10px] font-semibold text-foreground">Saídas</span>
                   <span className="text-[10px] text-muted-foreground ml-auto">{departureSummary.total} viagens</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {[
                     { label: "OK", value: departureSummary.onTime, color: "hsl(142, 71%, 45%)" },
                     { label: "Adiant.", value: departureSummary.early, color: "hsl(210, 80%, 55%)" },
                     { label: "Atras.", value: departureSummary.late, color: "hsl(38, 92%, 50%)" },
-                    { label: "Canc.", value: summary?.cancelled ?? 0, color: "hsl(0, 84%, 60%)" },
                   ].map((item) => (
                     <div key={item.label} className="text-center">
                       <div className="text-sm font-bold" style={{ color: item.color }}>{item.value}</div>
@@ -473,12 +498,11 @@ const Dashboard = () => {
                   <span className="text-[10px] font-semibold text-foreground">Entregas</span>
                   <span className="text-[10px] text-muted-foreground ml-auto">{deliverySummary.total} viagens</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {[
                     { label: "OK", value: deliverySummary.onTime, color: "hsl(142, 71%, 45%)" },
                     { label: "Adiant.", value: deliverySummary.early, color: "hsl(210, 80%, 55%)" },
                     { label: "Atras.", value: deliverySummary.late, color: "hsl(38, 92%, 50%)" },
-                    { label: "Canc.", value: summary?.cancelled ?? 0, color: "hsl(0, 84%, 60%)" },
                   ].map((item) => (
                     <div key={item.label} className="text-center">
                       <div className="text-sm font-bold" style={{ color: item.color }}>{item.value}</div>

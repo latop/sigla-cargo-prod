@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,17 +36,6 @@ interface LineSearchModalProps {
 }
 
 const LOCATION_MODAL_COLUMNS = ["code", "name", "codeIntegration2"];
-const LOCATION_COLUMN_LABELS: Record<string, string> = {
-  code: "Código", name: "Nome", codeIntegration2: "Cód. Integração TMS",
-};
-
-const COLUMNS = [
-  { key: "code", label: "Código" },
-  { key: "locationOrigCode", label: "Origem" },
-  { key: "locationDestCode", label: "Destino" },
-  { key: "fleetGroupCode", label: "Grupo de Frota" },
-  { key: "tripTypeCode", label: "Tipo de Viagem" },
-];
 
 const fetchLocationById = async (id: string): Promise<Rec | null> => {
   try {
@@ -58,6 +48,7 @@ const fetchLocationById = async (id: string): Promise<Rec | null> => {
 };
 
 export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, initialDestId }: LineSearchModalProps) {
+  const { t } = useTranslation();
   const [filterCode, setFilterCode] = useState("");
   const [filterOrigId, setFilterOrigId] = useState("");
   const [filterDestId, setFilterDestId] = useState("");
@@ -66,6 +57,20 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  const locationColumnLabels = useMemo<Record<string, string>>(() => ({
+    code: t("common.code"),
+    name: t("common.name"),
+    codeIntegration2: t("common.tmsIntegrationCode"),
+  }), [t]);
+
+  const columns = useMemo(() => ([
+    { key: "code", label: t("common.code") },
+    { key: "locationOrigCode", label: t("common.origin") },
+    { key: "locationDestCode", label: t("common.destination") },
+    { key: "fleetGroupCode", label: t("common.fleetGroupLabel") },
+    { key: "tripTypeCode", label: t("common.tripType") },
+  ]), [t]);
 
   // Pre-fill filters from parent when modal opens
   const prevOpenRef = useRef(false);
@@ -99,7 +104,6 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const rawResponse: Rec[] = await res.json();
 
-      // API returns wrapped objects: { line: {...}, qtdLineSections: N }
       const rawItems: Rec[] = rawResponse.map((wrapper) => {
         const lineData = wrapper.line as Rec | undefined;
         return lineData ? { ...lineData, qtdLineSections: wrapper.qtdLineSections } : wrapper;
@@ -153,50 +157,50 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">Pesquisar Linha</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de linhas com filtros</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("common.searchLine")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.lineDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Código</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.code")}</label>
             <Input
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter" && hasFilter) doSearch(1); }}
-              placeholder="Código da linha..."
+              placeholder={t("common.lineCode") + "..."}
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Origem</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.origin")}</label>
             <LookupSearchField
               endpoint="Location"
               labelFn="codeOnly"
               searchFilterParam="Filter1String"
               value={filterOrigId}
               onChange={(id) => setFilterOrigId(id)}
-              placeholder="Origem..."
+              placeholder={t("common.origin") + "..."}
               nullable
               className="h-8 text-xs"
               modalVisibleColumns={LOCATION_MODAL_COLUMNS}
-              columnLabels={LOCATION_COLUMN_LABELS}
+              columnLabels={locationColumnLabels}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Destino</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.destination")}</label>
             <LookupSearchField
               endpoint="Location"
               labelFn="codeOnly"
               searchFilterParam="Filter1String"
               value={filterDestId}
               onChange={(id) => setFilterDestId(id)}
-              placeholder="Destino..."
+              placeholder={t("common.destination") + "..."}
               nullable
               className="h-8 text-xs"
               modalVisibleColumns={LOCATION_MODAL_COLUMNS}
-              columnLabels={LOCATION_COLUMN_LABELS}
+              columnLabels={locationColumnLabels}
             />
           </div>
         </div>
@@ -204,12 +208,12 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
         <div className="flex justify-end">
           <Button
             size="sm"
-            className="h-8 text-xs gap-1"
+            className={cn("h-8 text-xs gap-1")}
             onClick={() => doSearch(1)}
             disabled={loading || !hasFilter}
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            Pesquisar
+            {t("common.search")}
           </Button>
         </div>
 
@@ -218,7 +222,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
           <Table>
             <TableHeader>
               <TableRow>
-                {COLUMNS.map((col) => (
+                {columns.map((col) => (
                   <TableHead key={col.key} className="h-7 text-xs px-2">
                     {col.label}
                   </TableHead>
@@ -228,8 +232,8 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={COLUMNS.length} className="text-center text-xs text-muted-foreground py-8">
-                    {loading ? "Carregando..." : searched ? "Nenhum resultado encontrado." : "Preencha ao menos um filtro e clique em Pesquisar."}
+                  <TableCell colSpan={columns.length} className="text-center text-xs text-muted-foreground py-8">
+                    {loading ? t("common.loading") : searched ? t("common.noResults") : t("common.searchHintLine")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -239,7 +243,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
                     className="cursor-pointer hover:bg-primary/5"
                     onClick={() => handleSelect(item)}
                   >
-                    {COLUMNS.map((col) => (
+                    {columns.map((col) => (
                       <TableCell key={col.key} className="h-7 text-xs px-2 py-1">
                         {item[col.key] === null || item[col.key] === undefined ? "--" : String(item[col.key])}
                       </TableCell>
@@ -254,7 +258,7 @@ export function LineSearchModal({ open, onOpenChange, onSelect, initialOrigId, i
         {/* Pagination */}
         {pagination && pagination.TotalPages > 1 && (
           <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
-            <span>{pagination.TotalCount} registro(s)</span>
+            <span>{pagination.TotalCount} {t("common.records")}</span>
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"

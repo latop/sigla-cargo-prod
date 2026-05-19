@@ -58,6 +58,8 @@ interface LookupSearchFieldProps {
   multiSelect?: boolean;
   /** Currently selected values for multi-select mode */
   selectedValues?: string[];
+  /** Currently selected items (id + label) for multi-select mode — used to display the user-friendly label instead of the raw ID when reopening the modal */
+  selectedItems?: { id: string; label: string; item?: Rec }[];
   /** Callback for multi-select confirm: receives array of { id, item } */
   onMultiSelectConfirm?: (selections: { id: string; label: string; item: Rec }[]) => void;
   /** Key to extract display value from item in multi-select (default: uses labelFn) */
@@ -135,6 +137,7 @@ export function LookupSearchField({
   initialLabel,
   multiSelect = false,
   selectedValues = [],
+  selectedItems,
   onMultiSelectConfirm,
   multiSelectValueKey,
   extraParams,
@@ -373,12 +376,19 @@ export function LookupSearchField({
     setModalPagination(null);
     setModalPage(1);
     setModalActiveOnly(true);
-    // Initialize multi-selections from selectedValues
+    // Initialize multi-selections — prefer selectedItems (id + label) so the
+    // user-visible badge keeps the friendly label across reopens instead of the raw ID.
     if (multiSelect) {
       const initial = new Map<string, { label: string; item: Rec }>();
-      selectedValues.forEach((v) => {
-        initial.set(v, { label: v, item: {} });
-      });
+      if (selectedItems && selectedItems.length > 0) {
+        selectedItems.forEach((si) => {
+          initial.set(si.id, { label: si.label || si.id, item: si.item || {} });
+        });
+      } else {
+        selectedValues.forEach((v) => {
+          initial.set(v, { label: v, item: {} });
+        });
+      }
       setMultiSelections(initial);
     }
   };
@@ -466,10 +476,12 @@ export function LookupSearchField({
             )}
             onClick={openModal}
           >
-            <span className="flex-1 truncate text-muted-foreground">
+            <span className={cn("flex-1 truncate", selectedValues.length === 0 && "text-muted-foreground")}>
               {selectedValues.length === 0
                 ? placeholder
-                : `${selectedValues.length} selecionado(s)`}
+                : (selectedItems && selectedItems.length > 0
+                    ? selectedItems.map((s) => s.label).join(", ")
+                    : `${selectedValues.length} selecionado(s)`)}
             </span>
             <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           </div>

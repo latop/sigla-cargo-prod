@@ -50,6 +50,67 @@ const lazyRoutes: Record<string, () => Promise<{ default: React.ComponentType }>
   "/analytics": () => import("@/pages/mock/AnalyticsPage"),
 };
 
+/**
+ * Paths whose page component lives under @/pages/mock/*.
+ * Visible only to password/login users — hidden when authenticated via SSO.
+ */
+export const MOCK_PATHS: ReadonlySet<string> = new Set([
+  "/vehicle-maintenance",
+  "/mileage-hourmeter",
+  "/preventive-maintenance",
+  "/corrective-maintenance",
+  "/downtime-record",
+  "/reserve-fleet",
+  "/journey-rules",
+  "/smart-allocation",
+  "/shift-swap",
+  "/driver-availability",
+  "/user-management",
+  "/audit-log",
+  "/operational-kpis",
+  "/analytics",
+]);
+
+export function isMockPath(path: string): boolean {
+  return MOCK_PATHS.has(path);
+}
+
+/**
+ * Returns true when the given path is a mock route AND the current user
+ * is NOT authenticated via email + password (so cookie/SSO sessions are blocked).
+ */
+export function shouldRedirectFromMockPath(path: string, isPasswordAuth: boolean): boolean {
+  return isMockPath(path) && !isPasswordAuth;
+}
+
+export interface MenuGroupLike {
+  labelKey: string;
+  items: { url: string }[];
+  directLink?: { url: string };
+}
+
+/**
+ * Strips mock-only entries from a menu group list when the user is not
+ * authenticated via email + password. Returns the input unchanged for
+ * password-authenticated users.
+ */
+export function filterMockGroupsForAuth<G extends MenuGroupLike>(
+  groups: G[],
+  isPasswordAuth: boolean,
+): G[] {
+  if (isPasswordAuth) return groups;
+  return groups
+    .map((g) => {
+      if (g.directLink) {
+        return isMockPath(g.directLink.url) ? null : g;
+      }
+      const items = g.items.filter((it) => !isMockPath(it.url));
+      if (items.length === 0) return null;
+      return { ...g, items } as G;
+    })
+    .filter((g): g is G => g !== null);
+}
+
 const componentCache: Record<string, React.ComponentType> = {};
 
 const GenericPageLazy = React.lazy(() => import("@/pages/GenericPage"));

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import "@/i18n";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
@@ -21,6 +22,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
+          <ProfileProvider>
           <HashRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
@@ -37,6 +39,7 @@ const App = () => (
               />
             </Routes>
           </HashRouter>
+          </ProfileProvider>
         </AuthProvider>
       </TooltipProvider>
     </AppErrorBoundary>

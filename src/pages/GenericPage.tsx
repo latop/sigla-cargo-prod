@@ -614,7 +614,7 @@ const GenericPage = () => {
 
         doc.save(`${title}.pdf`);
       }
-      toast({ title: `Exportação ${format === "excel" ? "Excel" : "PDF"} concluída!`, variant: "success" });
+      toast({ title: `${t("common.export")} ${format === "excel" ? "Excel" : "PDF"} ✓`, variant: "success" });
     } catch (err) {
       toast({ title: "Erro na exportação", description: (err as Error).message, variant: "error" });
     } finally {
@@ -748,7 +748,7 @@ const GenericPage = () => {
   const panelTitle = schema
     ? editingItem
       ? `${t("common.edit")} ${t(titleKey)}`
-      : `${schema.feminine ? "Nova" : "Novo"} ${t(titleKey)}`
+      : `${schema.feminine ? t("common.newF") : t("common.newM")} ${t(titleKey)}`
     : "";
 
   const hasCustomLayout = schema?.fields.some((f) => f.formColSpan !== undefined);
@@ -874,12 +874,12 @@ const GenericPage = () => {
             onValueChange={(v) => updateField(field.key, v)}
           >
             <SelectTrigger className={`h-8 text-xs ${errClass}`}>
-              <SelectValue placeholder="Selecione..." />
+              <SelectValue placeholder={t("common.select")} />
             </SelectTrigger>
             <SelectContent>
               {field.nullable && (
                 <SelectItem value="__none__" className="text-xs text-muted-foreground">
-                  -- Nenhum --
+                  {t("common.none")}
                 </SelectItem>
               )}
               {lookupItems.map((item) => (
@@ -919,9 +919,9 @@ const GenericPage = () => {
               updateField(field.key, allNumeric ? Number(v) : v);
             }}
           >
-            <SelectTrigger className={`h-8 text-xs ${errClass}`}>
-              <SelectValue placeholder="Selecione..." />
-            </SelectTrigger>
+              <SelectTrigger className={`h-8 text-xs ${errClass}`}>
+                <SelectValue placeholder={t("common.select")} />
+              </SelectTrigger>
             <SelectContent>
               {opts.map((o) => (
                 <SelectItem key={o.value} value={o.value} className="text-xs">
@@ -970,11 +970,11 @@ const GenericPage = () => {
           }
         >
           <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Todos..." />
+            <SelectValue placeholder={t("common.all")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__" className="text-xs text-muted-foreground">
-              -- Todos --
+              {t("common.allDash")}
             </SelectItem>
             {filterItems.map((item) => (
               <SelectItem key={String(item.id)} value={String(item.id)} className="text-xs">
@@ -990,9 +990,9 @@ const GenericPage = () => {
       return (
         <div className="flex items-center gap-1 h-8">
           {[
-            { value: "", label: "Todos" },
-            { value: "true", label: "Sim" },
-            { value: "false", label: "Não" },
+            { value: "", label: t("common.selectAll") },
+            { value: "true", label: t("common.yes") },
+            { value: "false", label: t("common.no") },
           ].map((opt) => (
             <Button
               key={opt.value}
@@ -1019,13 +1019,13 @@ const GenericPage = () => {
           }
         >
           <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Todos..." />
+            <SelectValue placeholder={t("common.all")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__" className="text-xs text-muted-foreground">-- Todos --</SelectItem>
+            <SelectItem value="__all__" className="text-xs text-muted-foreground">{t("common.allDash")}</SelectItem>
             {filter.options.map((o) => (
               <SelectItem key={o.value} value={o.value} className="text-xs">
-                {o.label}
+                {o.label.includes(".") ? t(o.label) : o.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1251,7 +1251,7 @@ const GenericPage = () => {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Filtrar resultados..."
+              placeholder={t("common.filterResults")}
               className="h-7 pl-8 text-xs w-52"
               value={localFilter}
               onChange={(e) => setLocalFilter(e.target.value)}
@@ -1286,17 +1286,17 @@ const GenericPage = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" disabled={isExporting}>
                 {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                Exportar
+                {t("common.export")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleExport("excel")} className="text-xs gap-2">
                 <FileSpreadsheet className="h-3.5 w-3.5" />
-                Exportar Excel
+                {t("common.exportExcel")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("pdf")} className="text-xs gap-2">
                 <FileText className="h-3.5 w-3.5" />
-                Exportar PDF
+                {t("common.exportPdf")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

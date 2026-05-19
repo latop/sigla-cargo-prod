@@ -36,6 +36,7 @@ import TripGanttChart, {
 } from "@/components/TripGanttChart";
 import { DailyTripEditPanel } from "@/components/DailyTripEditPanel";
 import { NewTripDialog } from "@/components/NewTripDialog";
+import { GpsStatusBadge } from "@/components/GpsStatusBadge";
 
 interface LookupItem {
   id: string;
@@ -419,6 +420,7 @@ export default function TripSchedulePage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <GpsStatusBadge />
           {searched && (
             <span className="text-xs text-muted-foreground">{totalCount} veículos encontrados</span>
           )}

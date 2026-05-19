@@ -170,6 +170,7 @@ export default function DriverCircuitPage() {
   const [locationGroupCode, setLocationGroupCode] = useState("");
   const [fleetGroupCodes, setFleetGroupCodes] = useState<string[]>([]);
   const [driverIds, setDriverIds] = useState<string[]>([]);
+  const [selectedDrivers, setSelectedDrivers] = useState<{ id: string; label: string; item?: Record<string, unknown> }[]>([]);
   const [positionCode, setPositionCode] = useState("");
   const [showInactive, setShowInactive] = useState(false);
 
@@ -376,6 +377,7 @@ export default function DriverCircuitPage() {
     setLocationGroupCode("");
     setFleetGroupCodes([]);
     setDriverIds([]);
+    setSelectedDrivers([]);
     setPositionCode("");
     setDrivers([]);
     setCircuitDrivers([]);
@@ -487,8 +489,19 @@ export default function DriverCircuitPage() {
   }
 
   const handleDriverMultiSelect = (selections: { id: string; label: string; item: Record<string, unknown> }[]) => {
-    setDriverIds(selections.map((s) => s.id));
+    const normalized = selections.map((s) => {
+      const nickName = (s.item?.nickName as string) || s.label;
+      const integrationCode = s.item?.integrationCode as string | undefined;
+      return {
+        id: s.id,
+        label: integrationCode ? `${nickName} - ${integrationCode}` : nickName,
+        item: s.item,
+      };
+    });
+    setSelectedDrivers(normalized);
+    setDriverIds(normalized.map((s) => s.id));
   };
+
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-3">
@@ -535,6 +548,7 @@ export default function DriverCircuitPage() {
             placeholder="Motorista..."
             multiSelect
             selectedValues={driverIds}
+            selectedItems={selectedDrivers}
             onMultiSelectConfirm={handleDriverMultiSelect}
             extraParams={showInactive ? { IsActive: "0" } : { IsActive: "1" }}
             transformItem={(item) => ({

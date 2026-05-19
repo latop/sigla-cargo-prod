@@ -32,10 +32,10 @@ interface CourseSearchModalProps {
   onSelect: (id: string, item: Rec) => void;
 }
 
-const RESTRICTION_LABELS: Record<number, { label: string; variant: "secondary" | "default" | "destructive" }> = {
-  0: { label: "Sem restrição", variant: "secondary" },
-  1: { label: "Alerta", variant: "default" },
-  2: { label: "Bloqueio", variant: "destructive" },
+const RESTRICTION_LABEL_KEYS: Record<number, { key: string; variant: "secondary" | "default" | "destructive" }> = {
+  0: { key: "course.noRestriction", variant: "secondary" },
+  1: { key: "course.warning", variant: "default" },
+  2: { key: "course.block", variant: "destructive" },
 };
 
 export function CourseSearchModal({ open, onOpenChange, onSelect }: CourseSearchModalProps) {
@@ -107,16 +107,16 @@ export function CourseSearchModal({ open, onOpenChange, onSelect }: CourseSearch
 
   const getRestrictionBadge = (item: Rec) => {
     const val = Number(item.restrictionType ?? item.RestrictionType ?? 0);
-    const info = RESTRICTION_LABELS[val] || RESTRICTION_LABELS[0];
-    return <Badge variant={info.variant} className="text-[10px]">{info.label}</Badge>;
+    const info = RESTRICTION_LABEL_KEYS[val] || RESTRICTION_LABEL_KEYS[0];
+    return <Badge variant={info.variant} className="text-[10px]">{t(info.key)}</Badge>;
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">{t("trainingClass.searchCourse") || "Pesquisar Curso"}</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de cursos</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("trainingClass.searchCourse")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.courseDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filters */}
@@ -149,7 +149,7 @@ export function CourseSearchModal({ open, onOpenChange, onSelect }: CourseSearch
               <TableRow>
                 <TableHead className="h-7 text-xs px-2">{t("common.code")}</TableHead>
                 <TableHead className="h-7 text-xs px-2">{t("common.description")}</TableHead>
-                <TableHead className="h-7 text-xs px-2 w-[120px] text-center">{t("course.restrictionType") || "Tipo Restrição"}</TableHead>
+                <TableHead className="h-7 text-xs px-2 w-[120px] text-center">{t("course.restrictionType")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

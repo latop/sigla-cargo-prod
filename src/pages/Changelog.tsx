@@ -15,6 +15,65 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.22.0",
+    date: "2026-05-19",
+    type: "feature",
+    changes: [
+      {
+        pt: "Controle de acesso: telas em desenvolvimento (mock) agora só ficam visíveis para usuários autenticados por e-mail e senha. Usuários via SSO veem apenas as telas concluídas — tanto no menu lateral quanto via URL direta",
+        en: "Access control: mock (in-development) screens are now only visible to users authenticated via email and password. SSO users see only completed screens — in the sidebar and via direct URL",
+        es: "Control de acceso: las pantallas en desarrollo (mock) ahora solo son visibles para usuarios autenticados por correo y contraseña. Los usuarios SSO ven solo las pantallas concluidas — tanto en el menú lateral como vía URL directa",
+      },
+      {
+        pt: "Tentativa de acesso direto por URL a uma tela mock por usuário SSO exibe um aviso claro e redireciona automaticamente para o Dashboard",
+        en: "Direct URL access to a mock screen by an SSO user shows a clear warning and automatically redirects to the Dashboard",
+        es: "El acceso directo por URL a una pantalla mock por un usuario SSO muestra una advertencia clara y redirige automáticamente al Dashboard",
+      },
+      {
+        pt: "Revalidação automática do acesso às rotas mock ao realizar login/logout (troca entre SSO e e-mail/senha) sem necessidade de recarregar a página",
+        en: "Automatic revalidation of mock route access on login/logout (switching between SSO and email/password) without needing to reload the page",
+        es: "Revalidación automática del acceso a las rutas mock al iniciar/cerrar sesión (cambio entre SSO y correo/contraseña) sin necesidad de recargar la página",
+      },
+      {
+        pt: "Dashboard › Status do Dia: fatia 'Canceladas' reincorporada como status exclusivo (não soma com Planejadas/Em Execução/Concluídas). Legenda agora exibe sempre as 4 categorias, mesmo zeradas, com estado esmaecido quando sem registros",
+        en: "Dashboard › Day Status: 'Cancelled' slice reincorporated as an exclusive status (does not overlap with Planned/In Progress/Completed). Legend now always shows all 4 categories, including zeros (faded when empty)",
+        es: "Dashboard › Estado del Día: porción 'Canceladas' reincorporada como estado exclusivo (no se suma con Planificadas/En Ejecución/Completadas). La leyenda ahora muestra siempre las 4 categorías, incluso en cero (atenuadas cuando vacías)",
+      },
+      {
+        pt: "Dashboard › Status do Dia: normalização automática garante que a soma das fatias sempre bate com o total de viagens (residual positivo vai para 'Outras'; sobreposições são escaladas proporcionalmente)",
+        en: "Dashboard › Day Status: automatic normalization ensures the sum of slices always matches total trips (positive residual goes to 'Other'; overlaps are scaled proportionally)",
+        es: "Dashboard › Estado del Día: normalización automática garantiza que la suma de las porciones siempre coincida con el total de viajes (el residual positivo va a 'Otras'; los solapamientos se escalan proporcionalmente)",
+      },
+      {
+        pt: "Cobertura de testes: 10 novos testes garantem que rotas mock só abrem para login por e-mail/senha e que SSO sempre redireciona para telas concluídas",
+        en: "Test coverage: 10 new tests ensure that mock routes only open for email/password login and that SSO always redirects to completed screens",
+        es: "Cobertura de pruebas: 10 nuevas pruebas garantizan que las rutas mock solo se abren con login por correo/contraseña y que SSO siempre redirige a pantallas concluidas",
+      },
+    ],
+  },
+  {
+    version: "1.21.0",
+    date: "2026-04-27",
+    type: "improvement",
+    changes: [
+      {
+        pt: "Internacionalização (i18n): cabeçalhos de tabela e labels de formulário de TODAS as telas de cadastro (Activity Truck, Stop Type, Justification, Course, License, Truck, Company, Location, etc.) agora respeitam o idioma selecionado (PT/EN/ES)",
+        en: "Internationalization (i18n): table headers and form labels for ALL registration screens (Activity Truck, Stop Type, Justification, Course, License, Truck, Company, Location, etc.) now respect the selected language (PT/EN/ES)",
+        es: "Internacionalización (i18n): encabezados de tabla y etiquetas de formulario de TODAS las pantallas de registro (Activity Truck, Stop Type, Justification, Course, License, Truck, Company, Location, etc.) ahora respetan el idioma seleccionado (PT/EN/ES)",
+      },
+      {
+        pt: "GenericPage: textos 'Filtrar resultados...', 'Selecione...', 'Todos...', 'Nenhum', 'Sim/Não', 'Exportar Excel/PDF', 'Nova/Novo' agora traduzidos",
+        en: "GenericPage: 'Filter results...', 'Select...', 'All...', 'None', 'Yes/No', 'Export Excel/PDF', 'New' now translated",
+        es: "GenericPage: 'Filtrar resultados...', 'Seleccione...', 'Todos...', 'Ninguno', 'Sí/No', 'Exportar Excel/PDF', 'Nuevo' ahora traducidos",
+      },
+      {
+        pt: "Catálogo de 70+ termos de domínio centralizado em fields.* nos arquivos de locale (pt/en/es) para reuso em toda a aplicação",
+        en: "Catalog of 70+ domain terms centralized in fields.* in locale files (pt/en/es) for reuse across the entire application",
+        es: "Catálogo de 70+ términos de dominio centralizado en fields.* en los archivos de locale (pt/en/es) para reutilización en toda la aplicación",
+      },
+    ],
+  },
+  {
     version: "1.20.0",
     date: "2026-04-27",
     type: "feature",
@@ -552,7 +611,7 @@ const typeBadge = {
   improvement: { label: { pt: "Melhoria", en: "Improvement", es: "Mejora" }, className: "bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20" },
 };
 
-export const APP_VERSION = "1.19.0";
+export const APP_VERSION = "1.22.0";
 
 const Changelog = () => {
   const { i18n } = useTranslation();

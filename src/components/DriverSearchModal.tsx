@@ -237,8 +237,8 @@ export function DriverSearchModal({ open, onOpenChange, onSelect, forceActiveOnl
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">{t("menu.driver") || "Motorista"}</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de motoristas</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("menu.driver")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.driverDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filter fields */}

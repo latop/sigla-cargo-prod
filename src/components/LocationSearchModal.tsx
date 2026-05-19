@@ -155,8 +155,8 @@ export function LocationSearchModal({ open, onOpenChange, onSelect, filterOperat
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetFilters(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display">{t("menu.location") || "Localidade"}</DialogTitle>
-          <DialogDescription className="sr-only">Busca avançada de localidades</DialogDescription>
+          <DialogTitle className="text-sm font-display">{t("menu.location")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("searchModal.locationDesc")}</DialogDescription>
         </DialogHeader>
 
         {/* Filters */}
@@ -172,27 +172,27 @@ export function LocationSearchModal({ open, onOpenChange, onSelect, filterOperat
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">{t("driver.name") || "Nome"}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.name")}</label>
             <Input
               value={filterName}
               onChange={(e) => setFilterName(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
-              placeholder={t("driver.name") + "..."}
+              placeholder={t("common.name") + "..."}
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Cód. TMS</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("common.tmsCode")}</label>
             <Input
               value={filterIntCode}
               onChange={(e) => setFilterIntCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
-              placeholder="Cód. TMS..."
+              placeholder={t("common.tmsCode") + "..."}
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">{t("menu.locationGroup") || "Grupo Localidade"}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("menu.locationGroup")}</label>
             <Select value={filterLocGroupId} onValueChange={setFilterLocGroupId}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder={t("common.selectAll")} />
@@ -206,7 +206,7 @@ export function LocationSearchModal({ open, onOpenChange, onSelect, filterOperat
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">{t("menu.locationType") || "Tipo Localidade"}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("menu.locationType")}</label>
             <Select value={filterLocTypeId} onValueChange={setFilterLocTypeId}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder={t("common.selectAll")} />
@@ -245,10 +245,10 @@ export function LocationSearchModal({ open, onOpenChange, onSelect, filterOperat
             <TableHeader>
               <TableRow>
                 <TableHead className="h-7 text-xs px-2">{t("common.code")}</TableHead>
-                <TableHead className="h-7 text-xs px-2">{t("driver.name") || "Nome"}</TableHead>
-                <TableHead className="h-7 text-xs px-2">Cód. TMS</TableHead>
-                <TableHead className="h-7 text-xs px-2">{t("menu.city") || "Cidade"}</TableHead>
-                <TableHead className="h-7 text-xs px-2">{t("menu.locationType") || "Tipo"}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("common.name")}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("common.tmsCode")}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("menu.city")}</TableHead>
+                <TableHead className="h-7 text-xs px-2">{t("menu.locationType")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
