@@ -15,6 +15,33 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "1.23.0",
+    date: "2026-05-20",
+    type: "feature",
+    changes: [
+      {
+        pt: "Identidade do app: título da aba atualizado para 'SIGLA Carga - Aplicação' e descrição para 'PepsiCo Brasil - CCO Transportes' (meta, OG e Twitter Cards). Favicon substituído pelo ícone institucional",
+        en: "App identity: tab title updated to 'SIGLA Carga - Aplicação' and description to 'PepsiCo Brasil - CCO Transportes' (meta, OG and Twitter cards). Favicon replaced with institutional icon",
+        es: "Identidad de la app: título de la pestaña actualizado a 'SIGLA Carga - Aplicación' y descripción a 'PepsiCo Brasil - CCO Transportes' (meta, OG y Twitter Cards). Favicon reemplazado por el ícono institucional",
+      },
+      {
+        pt: "Dashboard › Status do Dia: gráfico agora usa 7 categorias mutuamente exclusivas (Planejadas, Não iniciadas em atraso, Em Execução, Concluídas no prazo, Concluídas com atraso, Concluídas sem medição, Canceladas). 'Atrasadas' deixou de ser fatia do donut",
+        en: "Dashboard › Day Status: chart now uses 7 mutually exclusive categories (Planned, Not started/late, In Progress, Completed on time, Completed late, Completed without measurement, Cancelled). 'Delayed' is no longer a donut slice",
+        es: "Dashboard › Estado del Día: el gráfico ahora usa 7 categorías mutuamente excluyentes (Planificadas, No iniciadas en atraso, En Ejecución, Completadas a tiempo, Completadas con atraso, Completadas sin medición, Canceladas). 'Atrasadas' ya no es porción del donut",
+      },
+      {
+        pt: "Card 'Atrasadas' agora usa campo dedicado da API (delayed) ou, como fallback, soma 'Não iniciadas em atraso' + 'Concluídas com atraso' — sem duplicar contagens do donut",
+        en: "'Delayed' card now uses a dedicated API field (delayed) or, as fallback, sums 'Not started/late' + 'Completed late' — without double counting against the donut",
+        es: "La tarjeta 'Atrasadas' ahora usa un campo dedicado de la API (delayed) o, como respaldo, suma 'No iniciadas en atraso' + 'Completadas con atraso' — sin duplicar conteos del donut",
+      },
+      {
+        pt: "Dashboard: validação automática registra um aviso no console (console.warn) sempre que a soma das fatias de Status do Dia divergir de TotalTrips, com detalhamento por bucket para facilitar diagnóstico",
+        en: "Dashboard: automatic validation logs a console warning whenever the sum of Day Status slices diverges from TotalTrips, with per-bucket breakdown for easier diagnosis",
+        es: "Dashboard: validación automática registra una advertencia en consola siempre que la suma de las porciones de Estado del Día difiera de TotalTrips, con desglose por bucket para facilitar el diagnóstico",
+      },
+    ],
+  },
+  {
     version: "1.22.0",
     date: "2026-05-19",
     type: "feature",

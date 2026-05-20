@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +45,11 @@ interface DashboardSummary {
   planned: number;
   cancelled: number;
   delayed: number;
+  // New mutually-exclusive status buckets (sum should equal totalTrips)
+  notStartedDelayed?: number;
+  completedOnTime?: number;
+  completedLate?: number;
+  completedNoMeasurement?: number;
   uniqueDrivers: number;
   uniqueVehicles: number;
   onTimeRate: number;
@@ -147,22 +152,33 @@ const Dashboard = () => {
   const completedCount = summary?.completed ?? 0;
   const plannedCount = summary?.planned ?? 0;
   const cancelledCount = summary?.cancelled ?? 0;
-  const delayedCount = summary?.delayed ?? 0;
+  // Atrasadas: prefer dedicated API field; otherwise derive from mutually-exclusive
+  // late buckets (notStartedDelayed + completedLate) to avoid double counting.
+  const delayedCount = summary?.delayed ?? ((summary?.notStartedDelayed ?? 0) + (summary?.completedLate ?? 0));
   const driversCount = summary?.uniqueDrivers ?? 0;
   const vehiclesCount = summary?.uniqueVehicles ?? 0;
   const onTimeRate = summary?.onTimeRate ?? 0;
   const completionRate = summary?.completionRate ?? 0;
   const cancelRate = summary?.cancelRate ?? 0;
 
-  // Status pie data — mutually exclusive categories only.
-  // Normalize against totalTrips so the sum of slices always equals totalToday,
-  // independent of how the back-end reports status/atraso. Any positive residual
-  // (totalTrips - known categories) is bucketed as "Outras" so nothing is hidden;
-  // a negative residual (sum > total) means double counting → clamp to total.
+  // Status pie data — mutually exclusive categories returned by the API.
+  // Atraso is a condition (not a status) and is NOT a slice here — it stays only
+  // as an alert KPI card. The sum of slices should equal totalTrips.
+  const notStartedDelayedCount = summary?.notStartedDelayed ?? 0;
+  const completedOnTimeCount = summary?.completedOnTime ?? 0;
+  const completedLateCount = summary?.completedLate ?? 0;
+  const completedNoMeasureCount = summary?.completedNoMeasurement ?? 0;
+  // Fallback: if granular "completed*" buckets are not provided, fold legacy `completed` into "no measurement".
+  const hasGranularCompleted = completedOnTimeCount + completedLateCount + completedNoMeasureCount > 0;
+  const completedNoMeasureEffective = hasGranularCompleted ? completedNoMeasureCount : Math.max(0, completedCount);
+
   const rawStatus = [
     { key: "planned", label: { pt: "Planejadas", en: "Planned", es: "Planificadas" }, count: Math.max(0, plannedCount), color: "hsl(220, 72%, 35%)" },
+    { key: "notStartedDelayed", label: { pt: "Não iniciadas em atraso", en: "Not started (late)", es: "No iniciadas en atraso" }, count: Math.max(0, notStartedDelayedCount), color: "hsl(25, 95%, 53%)" },
     { key: "progress", label: { pt: "Em Execução", en: "In Progress", es: "En Ejecución" }, count: Math.max(0, inProgressCount), color: "hsl(210, 80%, 55%)" },
-    { key: "completed", label: { pt: "Concluídas", en: "Completed", es: "Completadas" }, count: Math.max(0, completedCount), color: "hsl(142, 71%, 45%)" },
+    { key: "completedOnTime", label: { pt: "Concluídas no prazo", en: "Completed on time", es: "Completadas a tiempo" }, count: Math.max(0, completedOnTimeCount), color: "hsl(142, 71%, 45%)" },
+    { key: "completedLate", label: { pt: "Concluídas com atraso", en: "Completed late", es: "Completadas con atraso" }, count: Math.max(0, completedLateCount), color: "hsl(38, 92%, 50%)" },
+    { key: "completedNoMeasure", label: { pt: "Concluídas sem medição", en: "Completed (no measurement)", es: "Completadas sin medición" }, count: completedNoMeasureEffective, color: "hsl(160, 40%, 55%)" },
     { key: "cancelled", label: { pt: "Canceladas", en: "Cancelled", es: "Canceladas" }, count: Math.max(0, cancelledCount), color: "hsl(0, 84%, 60%)" },
   ];
   const knownSum = rawStatus.reduce((acc, s) => acc + s.count, 0);
@@ -175,6 +191,31 @@ const Dashboard = () => {
       : rawStatus;
   const statusMap = reconciledStatus.filter((s) => s.count > 0);
   const pieSum = statusMap.reduce((acc, s) => acc + s.count, 0);
+
+  // Validate: sum of Status do Dia slices must equal TotalTrips. Log once per divergence.
+  const lastDivergenceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!summary) return;
+    const rawSum = rawStatus.reduce((acc, s) => acc + s.count, 0);
+    const diff = rawSum - totalToday;
+    const sig = `${totalToday}|${rawSum}|${pieSum}`;
+    if (diff !== 0 && lastDivergenceRef.current !== sig) {
+      lastDivergenceRef.current = sig;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[Dashboard][Status do Dia] Divergência detectada: soma das fatias (${rawSum}) ≠ TotalTrips (${totalToday}). Diferença=${diff}. Reconciliado=${pieSum}.`,
+        {
+          totalTrips: totalToday,
+          rawSum,
+          reconciledSum: pieSum,
+          diff,
+          buckets: rawStatus.reduce<Record<string, number>>((acc, s) => { acc[s.key] = s.count; return acc; }, {}),
+        },
+      );
+    } else if (diff === 0 && lastDivergenceRef.current !== null) {
+      lastDivergenceRef.current = null;
+    }
+  }, [summary, totalToday, pieSum, rawStatus]);
 
   const pieData = statusMap.map((s) => ({ name: s.label[lang], value: s.count, fill: s.color }));
 
