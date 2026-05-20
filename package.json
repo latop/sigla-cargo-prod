@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "npm run build && git add . && git commit -m \"Atualiza aplicação SIGLA Cargo\" && git push origin main"	
+    "deploy": "node scripts/deploy.js"	
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
