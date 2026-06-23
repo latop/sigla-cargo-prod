@@ -1,0 +1,1 @@
+import{aa as o,a2 as r}from"./index-Bp-pacVc.js";async function s(n,e={}){const t=o(),a={"Content-Type":"application/json",...e.headers};return t&&(a.Authorization=`Bearer ${t}`),fetch(`${r}${n}`,{...e,credentials:"include",headers:a})}export{s as a};
