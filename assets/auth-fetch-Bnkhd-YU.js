@@ -1,0 +1,1 @@
+import{a9 as o,a1 as r}from"./index-ChjUHhak.js";async function s(n,e={}){const t=o(),a={"Content-Type":"application/json",...e.headers};return t&&(a.Authorization=`Bearer ${t}`),fetch(`${r}${n}`,{...e,credentials:"include",headers:a})}export{s as a};

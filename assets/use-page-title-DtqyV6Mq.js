@@ -1,0 +1,1 @@
+import{b0 as r,r as u}from"./index-ChjUHhak.js";function l(s,a){const e=r();u.useEffect(()=>(e==null||e.setPageTitle(s),e==null||e.setPageIcon(a||null),()=>{e==null||e.setPageTitle(""),e==null||e.setPageIcon(null)}),[s,a,e])}export{l as u};
